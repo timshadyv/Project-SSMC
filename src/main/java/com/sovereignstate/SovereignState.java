@@ -10,6 +10,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.sovereignstate.systems.CommandSystem;
 
 public class SovereignState implements ModInitializer {
 
@@ -28,6 +29,7 @@ public class SovereignState implements ModInitializer {
 		ModItems.register();
 		ModBlocks.register();
 		ModSounds.register();
+		CommandSystem.register();
 
 		// On world load: initialize world state
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
