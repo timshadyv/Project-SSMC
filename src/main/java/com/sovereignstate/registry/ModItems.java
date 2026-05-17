@@ -5,10 +5,11 @@ import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
+import com.sovereignstate.item.SurveyorMapItem;
 
 public class ModItems {
 
-    public static final Item SURVEYOR_MAP = new Item(new FabricItemSettings().maxCount(1));
+    public static final Item SURVEYOR_MAP = new SurveyorMapItem(new FabricItemSettings().maxCount(1));
     public static final Item POLICE_BATON = new Item(new FabricItemSettings().maxCount(1));
     public static final Item CULTURE_TOME = new Item(new FabricItemSettings().maxCount(1));
     public static final Item RELIGION_TOME = new Item(new FabricItemSettings().maxCount(1));
