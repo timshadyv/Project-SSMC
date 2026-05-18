@@ -74,6 +74,11 @@ public class SovereignState implements ModInitializer {
 			tickCounter = 0;
 
 			server.getWorlds().forEach(world -> {
+				WorldStateData.get(world).markDirty();
+				PlayerStateData.get(world).markDirty();
+				DivisionData.get(world).markDirty();
+				CurrencyData.get(world).markDirty();
+				CultureData.get(world).markDirty();
 				LawSystem.tick(server);
 			});
 			TaxSystem.tick(server);

@@ -259,8 +259,31 @@ public class CommandSystem {
                                         TaxSystem.giveCoins(player, world, currencyID, amount);
                                         return 1;
                                     }))));
-
-            dispatcher.register(ss);
+// /ss currency <name>
+            ss.then(CommandManager.literal("currency")
+                    .then(CommandManager.argument("currencyname", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                PlayerStateData playerState = PlayerStateData.get(world);
+                                String divisionID = playerState.getDivisionID(player.getUuid().toString());
+                                if (divisionID == null || divisionID.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division."));
+                                    return 0;
+                                }
+                                DivisionData divData = DivisionData.get(world);
+                                NbtCompound div = divData.getDivisionById(divisionID);
+                                if (div == null) { player.sendMessage(Text.literal("§cDivision not found.")); return 0; }
+                                if (!div.getString("leaderUUID").equals(player.getUuid().toString())) {
+                                    player.sendMessage(Text.literal("§cOnly the leader can set the currency."));
+                                    return 0;
+                                }
+                                String currencyName = StringArgumentType.getString(context, "currencyname");
+                                divData.setOfficialCurrency(divisionID, currencyName);
+                                player.sendMessage(Text.literal("§aOfficial currency set to: §e" + currencyName));
+                                return 1;
+                            })));            dispatcher.register(ss);
         });
     }
 }
