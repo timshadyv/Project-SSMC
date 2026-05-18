@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.sovereignstate.data.DivisionData;
 import com.sovereignstate.data.PlayerStateData;
+import com.sovereignstate.systems.SocialClassSystem;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.command.CommandManager;
@@ -259,7 +260,8 @@ public class CommandSystem {
                                         TaxSystem.giveCoins(player, world, currencyID, amount);
                                         return 1;
                                     }))));
-// /ss currency <name>
+
+            // /ss currency <name>
             ss.then(CommandManager.literal("currency")
                     .then(CommandManager.argument("currencyname", StringArgumentType.word())
                             .executes(context -> {
@@ -283,7 +285,74 @@ public class CommandSystem {
                                 divData.setOfficialCurrency(divisionID, currencyName);
                                 player.sendMessage(Text.literal("§aOfficial currency set to: §e" + currencyName));
                                 return 1;
-                            })));            dispatcher.register(ss);
+                            })));
+
+            // /ss class [target]
+            ss.then(CommandManager.literal("class")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        SocialClassSystem.showClass(player, world, player);
+                        return 1;
+                    })
+                    .then(CommandManager.argument("target", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String targetName = StringArgumentType.getString(context, "target");
+                                ServerPlayerEntity target = context.getSource().getServer().getPlayerManager().getPlayer(targetName);
+                                if (target == null) { player.sendMessage(Text.literal("§cPlayer not found or not online.")); return 0; }
+                                SocialClassSystem.showClass(player, world, target);
+                                return 1;
+                            })));
+
+            // /ss setclass <player> <class>
+            ss.then(CommandManager.literal("setclass")
+                    .then(CommandManager.argument("target", StringArgumentType.word())
+                            .then(CommandManager.argument("class", StringArgumentType.word())
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String targetName = StringArgumentType.getString(context, "target");
+                                        String className = StringArgumentType.getString(context, "class");
+                                        ServerPlayerEntity target = context.getSource().getServer().getPlayerManager().getPlayer(targetName);
+                                        if (target == null) { player.sendMessage(Text.literal("§cPlayer not found or not online.")); return 0; }
+                                        SocialClassSystem.setClass(player, world, target, className);
+                                        return 1;
+                                    }))));
+
+            // /ss promote <player>
+            ss.then(CommandManager.literal("promote")
+                    .then(CommandManager.argument("target", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String targetName = StringArgumentType.getString(context, "target");
+                                ServerPlayerEntity target = context.getSource().getServer().getPlayerManager().getPlayer(targetName);
+                                if (target == null) { player.sendMessage(Text.literal("§cPlayer not found or not online.")); return 0; }
+                                SocialClassSystem.promote(player, world, target);
+                                return 1;
+                            })));
+
+            // /ss demote <player>
+            ss.then(CommandManager.literal("demote")
+                    .then(CommandManager.argument("target", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String targetName = StringArgumentType.getString(context, "target");
+                                ServerPlayerEntity target = context.getSource().getServer().getPlayerManager().getPlayer(targetName);
+                                if (target == null) { player.sendMessage(Text.literal("§cPlayer not found or not online.")); return 0; }
+                                SocialClassSystem.demote(player, world, target);
+                                return 1;
+                            })));
+
+            dispatcher.register(ss);
         });
     }
 }

@@ -25,7 +25,6 @@ public class TaxSystem {
             DivisionData divData = DivisionData.get(world);
             PlayerStateData playerState = PlayerStateData.get(world);
 
-            // Increment day counter
             int dayCounter = worldState.getIntTag("dayTickCounter") + 200;
             worldState.setIntTag("dayTickCounter", dayCounter);
             boolean isNewDay = dayCounter >= DAY_TICKS;
@@ -39,11 +38,9 @@ public class TaxSystem {
 
                 if (currencyID.isEmpty()) continue;
 
-                // Get tax rates from active laws
                 int incomeTaxRate = getIncomeTaxRate(divData, divisionID);
                 int propertyTaxRate = getPropertyTaxRate(divData, divisionID);
 
-                // Collect income tax from online players in this division
                 for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
                     String uuid = player.getUuid().toString();
                     String playerDivID = playerState.getDivisionID(uuid);
@@ -52,20 +49,24 @@ public class TaxSystem {
 
                     ServerWorld playerWorld = player.getServerWorld();
 
-                    // Income tax
+                    // Income tax with class multiplier
                     if (incomeTaxRate > 0) {
+                        String socialClass = playerState.getSocialClass(uuid);
+                        if (socialClass == null || socialClass.isEmpty()) socialClass = "peasant";
+                        float classMultiplier = SocialClassSystem.getTaxMultiplier(socialClass);
+
                         int wallet = playerState.getWallet(uuid, currencyID);
-                        int tax = (wallet * incomeTaxRate) / 100;
+                        int tax = (int) ((wallet * incomeTaxRate) / 100.0f * classMultiplier);
                         if (tax > 0) {
                             playerState.adjustWallet(uuid, currencyID, -tax);
                             divData.adjustTreasury(divisionID, currencyID, tax);
                             player.sendMessage(Text.literal(
                                     "§eTax collected: §c-" + tax + " §e" + currencyID +
-                                            " §7(income tax " + incomeTaxRate + "%)"));
+                                            " §7(income " + incomeTaxRate + "% × " + socialClass + " ×" + classMultiplier + ")"));
                         }
                     }
 
-                    // Caste tax modifier
+                    // Caste tax law
                     if (divData.hasLaw(divisionID, "caste_tax")) {
                         applyCasteTax(player, playerState, divData, divisionID, currencyID);
                     }
@@ -76,13 +77,11 @@ public class TaxSystem {
                     }
                 }
 
-                // Property tax - once per day
                 if (isNewDay && propertyTaxRate > 0) {
                     collectPropertyTax(server, world, divisionID, currencyID,
                             propertyTaxRate, playerState, divData, worldState);
                 }
 
-                // Transfer taxes up hierarchy
                 if (isNewDay) {
                     transferTaxUpHierarchy(world, divisionID, currencyID, divData);
                 }
@@ -90,7 +89,7 @@ public class TaxSystem {
         });
     }
 
-    // --- Get tax rates from laws ---
+    // --- Tax rates from laws ---
 
     private static int getIncomeTaxRate(DivisionData divData, String divisionID) {
         if (divData.hasLaw(divisionID, "income_tax_high")) return 30;
@@ -112,23 +111,18 @@ public class TaxSystem {
                                       String divisionID, String currencyID) {
         String uuid = player.getUuid().toString();
         String socialClass = playerState.getSocialClass(uuid);
+        if (socialClass == null || socialClass.isEmpty()) socialClass = "peasant";
 
-        int multiplier = switch (socialClass) {
-            case "noble", "merchant" -> 2;
-            case "peasant", "serf" -> 1;
-            case "slave" -> 0;
-            default -> 1;
-        };
+        float multiplier = SocialClassSystem.getTaxMultiplier(socialClass);
+        if (multiplier <= 0) return; // royalty exempt
 
-        if (multiplier > 1) {
-            int wallet = playerState.getWallet(uuid, currencyID);
-            int extraTax = (wallet * 5 * (multiplier - 1)) / 100;
-            if (extraTax > 0) {
-                playerState.adjustWallet(uuid, currencyID, -extraTax);
-                divData.adjustTreasury(divisionID, currencyID, extraTax);
-                player.sendMessage(Text.literal(
-                        "§eCaste tax: §c-" + extraTax + " §7(" + socialClass + ")"));
-            }
+        int wallet = playerState.getWallet(uuid, currencyID);
+        int extraTax = (int) (wallet * 0.05f * multiplier);
+        if (extraTax > 0) {
+            playerState.adjustWallet(uuid, currencyID, -extraTax);
+            divData.adjustTreasury(divisionID, currencyID, extraTax);
+            player.sendMessage(Text.literal(
+                    "§eCaste tax: §c-" + extraTax + " §7(" + socialClass + ")"));
         }
     }
 
@@ -164,12 +158,10 @@ public class TaxSystem {
             String uuid = player.getUuid().toString();
             if (!divisionID.equals(playerState.getDivisionID(uuid))) continue;
 
-            // Count chunks owned by player
             int chunksOwned = 0;
             for (int x = -500; x <= 500; x++) {
                 for (int z = -500; z <= 500; z++) {
-                    String owner = worldState.getTag(
-                            "chunk_" + x + "_" + z + "_owner");
+                    String owner = worldState.getTag("chunk_" + x + "_" + z + "_owner");
                     if (player.getName().getString().equals(owner)) chunksOwned++;
                 }
             }
@@ -198,7 +190,7 @@ public class TaxSystem {
         if (parentID.isEmpty()) return;
 
         int treasury = divData.getTreasury(divisionID, currencyID);
-        int transfer = (treasury * 10) / 100; // 10% to parent
+        int transfer = (treasury * 10) / 100;
 
         if (transfer > 0) {
             divData.adjustTreasury(divisionID, currencyID, -transfer);
@@ -206,7 +198,7 @@ public class TaxSystem {
         }
     }
 
-    // --- Give coins to player (for testing/admin) ---
+    // --- Give coins ---
 
     public static void giveCoins(ServerPlayerEntity player, ServerWorld world,
                                  String currencyID, int amount) {
@@ -233,14 +225,11 @@ public class TaxSystem {
                 String currencyID = div.getString("officialCurrencyID");
                 if (!currencyID.isEmpty()) {
                     int wallet = playerState.getWallet(uuid, currencyID);
-                    player.sendMessage(Text.literal(
-                            "§eWallet: §f" + wallet + " " + currencyID));
+                    player.sendMessage(Text.literal("§eWallet: §f" + wallet + " " + currencyID));
                     int treasury = divData.getTreasury(divisionID, currencyID);
-                    player.sendMessage(Text.literal(
-                            "§eDivision Treasury: §f" + treasury + " " + currencyID));
+                    player.sendMessage(Text.literal("§eDivision Treasury: §f" + treasury + " " + currencyID));
                 } else {
-                    player.sendMessage(Text.literal(
-                            "§cYour division has no official currency set."));
+                    player.sendMessage(Text.literal("§cYour division has no official currency set."));
                 }
             }
         } else {
