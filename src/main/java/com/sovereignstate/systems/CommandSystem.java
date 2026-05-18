@@ -162,6 +162,79 @@ public class CommandSystem {
                         return 1;
                     }));
 
+            // /ss law <lawname>
+            ss.then(CommandManager.literal("law")
+                    .then(CommandManager.argument("lawname", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                PlayerStateData playerState = PlayerStateData.get(world);
+                                String divisionID = playerState.getDivisionID(player.getUuid().toString());
+                                if (divisionID == null || divisionID.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division."));
+                                    return 0;
+                                }
+                                String lawName = StringArgumentType.getString(context, "lawname");
+                                LawSystem.submitLaw(player, world, divisionID, lawName);
+                                return 1;
+                            })));
+
+            // /ss repeal <lawname>
+            ss.then(CommandManager.literal("repeal")
+                    .then(CommandManager.argument("lawname", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                PlayerStateData playerState = PlayerStateData.get(world);
+                                String divisionID = playerState.getDivisionID(player.getUuid().toString());
+                                if (divisionID == null || divisionID.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division."));
+                                    return 0;
+                                }
+                                String lawName = StringArgumentType.getString(context, "lawname");
+                                LawSystem.repealLaw(player, world, divisionID, lawName);
+                                return 1;
+                            })));
+
+            // /ss laws
+            ss.then(CommandManager.literal("laws")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        PlayerStateData playerState = PlayerStateData.get(world);
+                        String divisionID = playerState.getDivisionID(player.getUuid().toString());
+                        if (divisionID == null || divisionID.isEmpty()) {
+                            player.sendMessage(Text.literal("§cYou are not in a division."));
+                            return 0;
+                        }
+                        LawSystem.listLaws(player, world, divisionID);
+                        return 1;
+                    }));
+
+            // /ss vote <yes/no> <lawname>
+            ss.then(CommandManager.literal("vote")
+                    .then(CommandManager.argument("choice", StringArgumentType.word())
+                            .then(CommandManager.argument("lawname", StringArgumentType.word())
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        PlayerStateData playerState = PlayerStateData.get(world);
+                                        String divisionID = playerState.getDivisionID(player.getUuid().toString());
+                                        if (divisionID == null || divisionID.isEmpty()) {
+                                            player.sendMessage(Text.literal("§cYou are not in a division."));
+                                            return 0;
+                                        }
+                                        String choice = StringArgumentType.getString(context, "choice");
+                                        String lawName = StringArgumentType.getString(context, "lawname");
+                                        boolean voteYes = choice.equalsIgnoreCase("yes");
+                                        LawSystem.castVote(player, world, divisionID, lawName, voteYes);
+                                        return 1;
+                                    }))));
+
             dispatcher.register(ss);
         });
     }

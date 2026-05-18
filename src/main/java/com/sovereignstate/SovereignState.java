@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.sovereignstate.systems.CommandSystem;
+import com.sovereignstate.systems.LawSystem;
 
 public class SovereignState implements ModInitializer {
 
@@ -62,8 +63,7 @@ public class SovereignState implements ModInitializer {
 			tickCounter = 0;
 
 			server.getWorlds().forEach(world -> {
-				// Systems will be called here as we build them
-				// Each system gets added here when its file is complete
+				LawSystem.tick(server);
 			});
 		});
 
