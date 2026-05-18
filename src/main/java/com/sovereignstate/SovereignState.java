@@ -4,21 +4,24 @@ import com.sovereignstate.registry.ModBlocks;
 import com.sovereignstate.registry.ModItems;
 import com.sovereignstate.registry.ModSounds;
 import com.sovereignstate.data.WorldStateData;
+import com.sovereignstate.data.PlayerStateData;
+import com.sovereignstate.data.DivisionData;
+import com.sovereignstate.data.CurrencyData;
 import com.sovereignstate.data.CultureData;
+import com.sovereignstate.systems.CommandSystem;
+import com.sovereignstate.systems.LawSystem;
+import com.sovereignstate.systems.TaxSystem;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.sovereignstate.systems.CommandSystem;
-import com.sovereignstate.systems.LawSystem;
 
 public class SovereignState implements ModInitializer {
 
 	public static final String MOD_ID = "sovereignstate";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	// Tick counter to throttle systems
 	private static int tickCounter = 0;
 	private static final int TICK_INTERVAL = 200;
 
@@ -26,18 +29,19 @@ public class SovereignState implements ModInitializer {
 	public void onInitialize() {
 		LOGGER.info("Sovereign State initializing...");
 
-		// Register all content
 		ModItems.register();
 		ModBlocks.register();
 		ModSounds.register();
 		CommandSystem.register();
 
-		// On world load: initialize world state
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
 			server.getWorlds().forEach(world -> {
 				WorldStateData worldState = WorldStateData.get(world);
+				PlayerStateData.get(world);
+				DivisionData.get(world);
+				CurrencyData.get(world);
+				CultureData cultureData = CultureData.get(world);
 
-				// Set defaults if not already set
 				if (!worldState.hasTag("isPureRoleplayMode")) {
 					worldState.setBooleanTag("isPureRoleplayMode", false);
 				}
@@ -48,15 +52,22 @@ public class SovereignState implements ModInitializer {
 					worldState.setTag("npcMode", "full_simulation");
 				}
 
-				// Load culture presets
-				CultureData cultureData = CultureData.get(world);
 				cultureData.loadPresetsIfNeeded();
 
 				LOGGER.info("Sovereign State world state initialized.");
 			});
 		});
 
-		// Server tick: run all systems every 200 ticks
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+			server.getWorlds().forEach(world -> {
+				WorldStateData.get(world).markDirty();
+				PlayerStateData.get(world).markDirty();
+				DivisionData.get(world).markDirty();
+				CurrencyData.get(world).markDirty();
+				CultureData.get(world).markDirty();
+			});
+		});
+
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			tickCounter++;
 			if (tickCounter < TICK_INTERVAL) return;
@@ -65,6 +76,7 @@ public class SovereignState implements ModInitializer {
 			server.getWorlds().forEach(world -> {
 				LawSystem.tick(server);
 			});
+			TaxSystem.tick(server);
 		});
 
 		LOGGER.info("Sovereign State initialized successfully.");

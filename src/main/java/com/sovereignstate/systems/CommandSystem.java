@@ -1,5 +1,6 @@
 package com.sovereignstate.systems;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.sovereignstate.data.DivisionData;
 import com.sovereignstate.data.PlayerStateData;
@@ -232,6 +233,30 @@ public class CommandSystem {
                                         String lawName = StringArgumentType.getString(context, "lawname");
                                         boolean voteYes = choice.equalsIgnoreCase("yes");
                                         LawSystem.castVote(player, world, divisionID, lawName, voteYes);
+                                        return 1;
+                                    }))));
+
+            // /ss balance
+            ss.then(CommandManager.literal("balance")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        TaxSystem.checkBalance(player, world);
+                        return 1;
+                    }));
+
+            // /ss give <currencyID> <amount>
+            ss.then(CommandManager.literal("give")
+                    .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                            .then(CommandManager.argument("amount", IntegerArgumentType.integer(1))
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String currencyID = StringArgumentType.getString(context, "currencyID");
+                                        int amount = IntegerArgumentType.getInteger(context, "amount");
+                                        TaxSystem.giveCoins(player, world, currencyID, amount);
                                         return 1;
                                     }))));
 
