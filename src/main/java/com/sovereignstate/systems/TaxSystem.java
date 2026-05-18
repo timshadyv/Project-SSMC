@@ -1,10 +1,8 @@
 package com.sovereignstate.systems;
 
-import com.sovereignstate.data.CurrencyData;
 import com.sovereignstate.data.DivisionData;
 import com.sovereignstate.data.PlayerStateData;
 import com.sovereignstate.data.WorldStateData;
-import com.sovereignstate.util.TextHelper;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -25,6 +23,7 @@ public class TaxSystem {
             DivisionData divData = DivisionData.get(world);
             PlayerStateData playerState = PlayerStateData.get(world);
 
+            // Advance global day tick counter (increments by 200 each call = called every 200 ticks)
             int dayCounter = worldState.getIntTag("dayTickCounter") + 200;
             worldState.setIntTag("dayTickCounter", dayCounter);
             boolean isNewDay = dayCounter >= DAY_TICKS;
@@ -38,65 +37,109 @@ public class TaxSystem {
 
                 if (currencyID.isEmpty()) continue;
 
-                int incomeTaxRate = getIncomeTaxRate(divData, divisionID);
-                int propertyTaxRate = getPropertyTaxRate(divData, divisionID);
-
-                for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-                    String uuid = player.getUuid().toString();
-                    String playerDivID = playerState.getDivisionID(uuid);
-
-                    if (!divisionID.equals(playerDivID)) continue;
-
-                    ServerWorld playerWorld = player.getServerWorld();
-
-                    // Income tax with class multiplier
-                    if (incomeTaxRate > 0) {
-                        String socialClass = playerState.getSocialClass(uuid);
-                        if (socialClass == null || socialClass.isEmpty()) socialClass = "peasant";
-                        float classMultiplier = SocialClassSystem.getTaxMultiplier(socialClass);
-
-                        int wallet = playerState.getWallet(uuid, currencyID);
-                        int tax = (int) ((wallet * incomeTaxRate) / 100.0f * classMultiplier);
-                        if (tax > 0) {
-                            playerState.adjustWallet(uuid, currencyID, -tax);
-                            divData.adjustTreasury(divisionID, currencyID, tax);
-                            player.sendMessage(Text.literal(
-                                    "§eTax collected: §c-" + tax + " §e" + currencyID +
-                                            " §7(income " + incomeTaxRate + "% × " + socialClass + " ×" + classMultiplier + ")"));
-                        }
-                    }
-
-                    // Caste tax law
-                    if (divData.hasLaw(divisionID, "caste_tax")) {
-                        applyCasteTax(player, playerState, divData, divisionID, currencyID);
-                    }
-
-                    // Gender tax differential
-                    if (divData.hasLaw(divisionID, "gender_tax_differential")) {
-                        applyGenderTax(player, playerState, divData, divisionID, currencyID, uuid);
-                    }
-                }
-
-                if (isNewDay && propertyTaxRate > 0) {
-                    collectPropertyTax(server, world, divisionID, currencyID,
-                            propertyTaxRate, playerState, divData, worldState);
-                }
-
+                // --- Per-division day counter for income tax frequency ---
                 if (isNewDay) {
+                    int divDaysSinceTax = divData.getDaysSinceTax(divisionID) + 1;
+                    int taxFrequency = divData.getTaxFrequency(divisionID); // in days
+                    boolean taxDue = divDaysSinceTax >= taxFrequency;
+
+                    if (taxDue) {
+                        divData.setDaysSinceTax(divisionID, 0);
+
+                        int incomeTaxRate = divData.getTaxRate(divisionID);
+
+                        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                            String uuid = player.getUuid().toString();
+                            String playerDivID = playerState.getDivisionID(uuid);
+                            if (!divisionID.equals(playerDivID)) continue;
+
+                            // Income tax with class multiplier
+                            if (incomeTaxRate > 0) {
+                                String socialClass = playerState.getSocialClass(uuid);
+                                if (socialClass == null || socialClass.isEmpty()) socialClass = "peasant";
+                                float classMultiplier = SocialClassSystem.getTaxMultiplier(socialClass);
+
+                                if (classMultiplier <= 0) continue; // royalty exempt
+
+                                int wallet = playerState.getWallet(uuid, currencyID);
+                                int tax = (int) ((wallet * incomeTaxRate) / 100.0f * classMultiplier);
+                                if (tax > 0) {
+                                    playerState.adjustWallet(uuid, currencyID, -tax);
+                                    divData.adjustTreasury(divisionID, currencyID, tax);
+                                    player.sendMessage(Text.literal(
+                                            "§eTax collected: §c-" + tax + " §e" + currencyID +
+                                                    " §7(income " + incomeTaxRate + "% × " + socialClass +
+                                                    " ×" + classMultiplier + ", every " + taxFrequency + " days)"));
+                                }
+                            }
+
+                            // Caste tax law
+                            if (divData.hasLaw(divisionID, "caste_tax")) {
+                                applyCasteTax(player, playerState, divData, divisionID, currencyID);
+                            }
+
+                            // Gender tax differential
+                            if (divData.hasLaw(divisionID, "gender_tax_differential")) {
+                                applyGenderTax(player, playerState, divData, divisionID, currencyID, uuid);
+                            }
+                        }
+                    } else {
+                        divData.setDaysSinceTax(divisionID, divDaysSinceTax);
+                    }
+
+                    // Property tax: every in-game day regardless of income frequency
+                    int propertyTaxRate = getPropertyTaxRate(divData, divisionID);
+                    if (propertyTaxRate > 0) {
+                        collectPropertyTax(server, world, divisionID, currencyID,
+                                propertyTaxRate, playerState, divData, worldState);
+                    }
+
+                    // Transfer taxes up hierarchy daily
                     transferTaxUpHierarchy(world, divisionID, currencyID, divData);
                 }
             }
         });
     }
 
-    // --- Tax rates from laws ---
+    // --- Set tax config (called by /ss tax set <rate> <days>) ---
 
-    private static int getIncomeTaxRate(DivisionData divData, String divisionID) {
-        if (divData.hasLaw(divisionID, "income_tax_high")) return 30;
-        if (divData.hasLaw(divisionID, "income_tax_medium")) return 15;
-        if (divData.hasLaw(divisionID, "income_tax_low")) return 5;
-        return 0;
+    public static void setTaxConfig(ServerPlayerEntity player, ServerWorld world,
+                                    int rate, int frequencyDays) {
+        DivisionData divData = DivisionData.get(world);
+        PlayerStateData playerState = PlayerStateData.get(world);
+        String uuid = player.getUuid().toString();
+        String divisionID = playerState.getDivisionID(uuid);
+
+        if (divisionID == null || divisionID.isEmpty()) {
+            player.sendMessage(Text.literal("§cYou are not in a division."));
+            return;
+        }
+
+        // Only head of state (leader) can set taxes
+        String leaderUUID = divData.getLeaderUUID(divisionID);
+        if (!uuid.equals(leaderUUID)) {
+            player.sendMessage(Text.literal("§cOnly the head of state can set tax rates."));
+            return;
+        }
+
+        if (rate < 0 || rate > 100) {
+            player.sendMessage(Text.literal("§cRate must be between 0 and 100."));
+            return;
+        }
+        if (frequencyDays < 1) {
+            player.sendMessage(Text.literal("§cFrequency must be at least 1 day."));
+            return;
+        }
+
+        divData.setTaxRate(divisionID, rate);
+        divData.setTaxFrequency(divisionID, frequencyDays);
+        divData.setDaysSinceTax(divisionID, 0); // reset counter on change
+
+        player.sendMessage(Text.literal(
+                "§aTax set: §e" + rate + "% §aevery §e" + frequencyDays + " §ain-game day(s)."));
     }
+
+    // --- Property tax rate from laws ---
 
     private static int getPropertyTaxRate(DivisionData divData, String divisionID) {
         if (divData.hasLaw(divisionID, "property_tax")) return 10;
@@ -228,6 +271,13 @@ public class TaxSystem {
                     player.sendMessage(Text.literal("§eWallet: §f" + wallet + " " + currencyID));
                     int treasury = divData.getTreasury(divisionID, currencyID);
                     player.sendMessage(Text.literal("§eDivision Treasury: §f" + treasury + " " + currencyID));
+
+                    int rate = divData.getTaxRate(divisionID);
+                    int freq = divData.getTaxFrequency(divisionID);
+                    int daysSince = divData.getDaysSinceTax(divisionID);
+                    player.sendMessage(Text.literal(
+                            "§eTax: §f" + rate + "% §7every §f" + freq +
+                                    " §7day(s) — §fnext in §e" + (freq - daysSince) + " §7day(s)"));
                 } else {
                     player.sendMessage(Text.literal("§cYour division has no official currency set."));
                 }

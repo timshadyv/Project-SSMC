@@ -273,4 +273,42 @@ public class DivisionData extends PersistentState {
         NbtCompound div = getDivisionById(divisionID);
         return div != null ? div.getByteArray("flagData") : new byte[512];
     }
-}
+// --- Tax config ---
+
+    public void setTaxRate(String divisionID, int rate) {
+        NbtCompound div = getDivisionById(divisionID);
+        if (div == null) return;
+        div.putInt("taxRatePercent", rate);
+        markDirty();
+    }
+
+    public int getTaxRate(String divisionID) {
+        NbtCompound div = getDivisionById(divisionID);
+        if (div == null) return 0;
+        return div.contains("taxRatePercent") ? div.getInt("taxRatePercent") : 5;
+    }
+
+    public void setTaxFrequency(String divisionID, int days) {
+        NbtCompound div = getDivisionById(divisionID);
+        if (div == null) return;
+        div.putInt("taxFrequencyDays", days);
+        markDirty();
+    }
+
+    public int getTaxFrequency(String divisionID) {
+        NbtCompound div = getDivisionById(divisionID);
+        if (div == null) return 7;
+        return div.contains("taxFrequencyDays") ? div.getInt("taxFrequencyDays") : 7;
+    }
+
+    public void setDaysSinceTax(String divisionID, int days) {
+        NbtCompound div = getDivisionById(divisionID);
+        if (div == null) return;
+        div.putInt("daysSinceTax", days);
+        markDirty();
+    }
+
+    public int getDaysSinceTax(String divisionID) {
+        NbtCompound div = getDivisionById(divisionID);
+        return div != null ? div.getInt("daysSinceTax") : 0;
+    }}
