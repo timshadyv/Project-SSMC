@@ -4,7 +4,6 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.sovereignstate.data.DivisionData;
 import com.sovereignstate.data.PlayerStateData;
-import com.sovereignstate.systems.SocialClassSystem;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.command.CommandManager;
@@ -12,6 +11,7 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
+import com.sovereignstate.systems.CurrencySystem;
 
 import java.util.List;
 
@@ -261,96 +261,87 @@ public class CommandSystem {
                                         return 1;
                                     }))));
 
-            // /ss currency <name>
-            ss.then(CommandManager.literal("currency")
-                    .then(CommandManager.argument("currencyname", StringArgumentType.word())
-                            .executes(context -> {
-                                ServerPlayerEntity player = context.getSource().getPlayer();
-                                if (player == null) return 0;
-                                ServerWorld world = context.getSource().getWorld();
-                                PlayerStateData playerState = PlayerStateData.get(world);
-                                String divisionID = playerState.getDivisionID(player.getUuid().toString());
-                                if (divisionID == null || divisionID.isEmpty()) {
-                                    player.sendMessage(Text.literal("§cYou are not in a division."));
-                                    return 0;
-                                }
-                                DivisionData divData = DivisionData.get(world);
-                                NbtCompound div = divData.getDivisionById(divisionID);
-                                if (div == null) { player.sendMessage(Text.literal("§cDivision not found.")); return 0; }
-                                if (!div.getString("leaderUUID").equals(player.getUuid().toString())) {
-                                    player.sendMessage(Text.literal("§cOnly the leader can set the currency."));
-                                    return 0;
-                                }
-                                String currencyName = StringArgumentType.getString(context, "currencyname");
-                                divData.setOfficialCurrency(divisionID, currencyName);
-                                player.sendMessage(Text.literal("§aOfficial currency set to: §e" + currencyName));
-                                return 1;
-                            })));
+            // /ss currency create <name> <namePlural> <symbol> <baseValue> <mintRate>
+            var currency = CommandManager.literal("currency");
 
-            // /ss class [target]
-            ss.then(CommandManager.literal("class")
-                    .executes(context -> {
-                        ServerPlayerEntity player = context.getSource().getPlayer();
-                        if (player == null) return 0;
-                        ServerWorld world = context.getSource().getWorld();
-                        SocialClassSystem.showClass(player, world, player);
-                        return 1;
-                    })
-                    .then(CommandManager.argument("target", StringArgumentType.word())
-                            .executes(context -> {
-                                ServerPlayerEntity player = context.getSource().getPlayer();
-                                if (player == null) return 0;
-                                ServerWorld world = context.getSource().getWorld();
-                                String targetName = StringArgumentType.getString(context, "target");
-                                ServerPlayerEntity target = context.getSource().getServer().getPlayerManager().getPlayer(targetName);
-                                if (target == null) { player.sendMessage(Text.literal("§cPlayer not found or not online.")); return 0; }
-                                SocialClassSystem.showClass(player, world, target);
-                                return 1;
-                            })));
+            currency.then(CommandManager.literal("create")
+                    .then(CommandManager.argument("name", StringArgumentType.word())
+                            .then(CommandManager.argument("namePlural", StringArgumentType.word())
+                                    .then(CommandManager.argument("symbol", StringArgumentType.word())
+                                            .then(CommandManager.argument("baseValue", IntegerArgumentType.integer(1))
+                                                    .then(CommandManager.argument("mintRate", IntegerArgumentType.integer(1))
+                                                            .executes(context -> {
+                                                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                                                if (player == null) return 0;
+                                                                ServerWorld world = context.getSource().getWorld();
+                                                                String name = StringArgumentType.getString(context, "name");
+                                                                String namePlural = StringArgumentType.getString(context, "namePlural");
+                                                                String symbol = StringArgumentType.getString(context, "symbol");
+                                                                int baseValue = IntegerArgumentType.getInteger(context, "baseValue");
+                                                                int mintRate = IntegerArgumentType.getInteger(context, "mintRate");
+                                                                CurrencySystem.createCurrency(player, world, name, namePlural, symbol, baseValue, mintRate);
+                                                                return 1;
+                                                            })))))));
 
-            // /ss setclass <player> <class>
-            ss.then(CommandManager.literal("setclass")
-                    .then(CommandManager.argument("target", StringArgumentType.word())
-                            .then(CommandManager.argument("class", StringArgumentType.word())
+            currency.then(CommandManager.literal("mint")
+                    .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                            .then(CommandManager.argument("amount", IntegerArgumentType.integer(1))
                                     .executes(context -> {
                                         ServerPlayerEntity player = context.getSource().getPlayer();
                                         if (player == null) return 0;
                                         ServerWorld world = context.getSource().getWorld();
-                                        String targetName = StringArgumentType.getString(context, "target");
-                                        String className = StringArgumentType.getString(context, "class");
-                                        ServerPlayerEntity target = context.getSource().getServer().getPlayerManager().getPlayer(targetName);
-                                        if (target == null) { player.sendMessage(Text.literal("§cPlayer not found or not online.")); return 0; }
-                                        SocialClassSystem.setClass(player, world, target, className);
+                                        String currencyID = StringArgumentType.getString(context, "currencyID");
+                                        int amount = IntegerArgumentType.getInteger(context, "amount");
+                                        CurrencySystem.mintCoins(player, world, currencyID, amount);
                                         return 1;
                                     }))));
 
-            // /ss promote <player>
-            ss.then(CommandManager.literal("promote")
-                    .then(CommandManager.argument("target", StringArgumentType.word())
+            currency.then(CommandManager.literal("info")
+                    .then(CommandManager.argument("currencyID", StringArgumentType.word())
                             .executes(context -> {
                                 ServerPlayerEntity player = context.getSource().getPlayer();
                                 if (player == null) return 0;
                                 ServerWorld world = context.getSource().getWorld();
-                                String targetName = StringArgumentType.getString(context, "target");
-                                ServerPlayerEntity target = context.getSource().getServer().getPlayerManager().getPlayer(targetName);
-                                if (target == null) { player.sendMessage(Text.literal("§cPlayer not found or not online.")); return 0; }
-                                SocialClassSystem.promote(player, world, target);
+                                String currencyID = StringArgumentType.getString(context, "currencyID");
+                                CurrencySystem.showCurrencyInfo(player, world, currencyID);
                                 return 1;
                             })));
 
-            // /ss demote <player>
-            ss.then(CommandManager.literal("demote")
-                    .then(CommandManager.argument("target", StringArgumentType.word())
-                            .executes(context -> {
-                                ServerPlayerEntity player = context.getSource().getPlayer();
-                                if (player == null) return 0;
-                                ServerWorld world = context.getSource().getWorld();
-                                String targetName = StringArgumentType.getString(context, "target");
-                                ServerPlayerEntity target = context.getSource().getServer().getPlayerManager().getPlayer(targetName);
-                                if (target == null) { player.sendMessage(Text.literal("§cPlayer not found or not online.")); return 0; }
-                                SocialClassSystem.demote(player, world, target);
-                                return 1;
-                            })));
+            currency.then(CommandManager.literal("withdraw")
+                    .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                            .then(CommandManager.argument("amount", IntegerArgumentType.integer(1))
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String currencyID = StringArgumentType.getString(context, "currencyID");
+                                        int amount = IntegerArgumentType.getInteger(context, "amount");
+                                        CurrencySystem.withdrawFromTreasury(player, world, currencyID, amount);
+                                        return 1;
+                                    }))));
+
+            currency.then(CommandManager.literal("pay")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                                    .then(CommandManager.argument("amount", IntegerArgumentType.integer(1))
+                                            .executes(context -> {
+                                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                                if (player == null) return 0;
+                                                ServerWorld world = context.getSource().getWorld();
+                                                String targetName = StringArgumentType.getString(context, "player");
+                                                String currencyID = StringArgumentType.getString(context, "currencyID");
+                                                int amount = IntegerArgumentType.getInteger(context, "amount");
+                                                ServerPlayerEntity target = context.getSource().getServer()
+                                                        .getPlayerManager().getPlayer(targetName);
+                                                if (target == null) {
+                                                    player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                                    return 0;
+                                                }
+                                                CurrencySystem.transferCoins(player, world, target, currencyID, amount);
+                                                return 1;
+                                            })))));
+
+            ss.then(currency);
 
             dispatcher.register(ss);
         });

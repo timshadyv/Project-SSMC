@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.sovereignstate.systems.CurrencySystem;
 
 public class SovereignState implements ModInitializer {
 
@@ -82,6 +83,7 @@ public class SovereignState implements ModInitializer {
 				LawSystem.tick(server);
 			});
 			TaxSystem.tick(server);
+			CurrencySystem.tick(server);
 		});
 
 		LOGGER.info("Sovereign State initialized successfully.");
