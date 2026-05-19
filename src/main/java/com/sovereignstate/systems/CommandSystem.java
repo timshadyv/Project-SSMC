@@ -12,6 +12,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import com.sovereignstate.systems.CurrencySystem;
+import com.sovereignstate.systems.PropertySystem;
 
 import java.util.List;
 
@@ -477,7 +478,102 @@ public class CommandSystem {
                                 TradeSystem.buyListing(player, world, listingID);
                                 return 1;
                             })));
+// --- PROPERTY COMMANDS ---
+            var property = CommandManager.literal("property");
 
+// /ss property sell <price> <currencyID>
+            property.then(CommandManager.literal("sell")
+                    .then(CommandManager.argument("price", IntegerArgumentType.integer(1))
+                            .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        int price = IntegerArgumentType.getInteger(context, "price");
+                                        String currencyID = StringArgumentType.getString(context, "currencyID");
+                                        PropertySystem.listChunkForSale(player, world, price, currencyID);
+                                        return 1;
+                                    }))));
+
+// /ss property offer <player> <price> <currencyID>
+            property.then(CommandManager.literal("offer")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .then(CommandManager.argument("price", IntegerArgumentType.integer(1))
+                                    .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                                            .executes(context -> {
+                                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                                if (player == null) return 0;
+                                                ServerWorld world = context.getSource().getWorld();
+                                                String targetName = StringArgumentType.getString(context, "player");
+                                                int price = IntegerArgumentType.getInteger(context, "price");
+                                                String currencyID = StringArgumentType.getString(context, "currencyID");
+                                                ServerPlayerEntity target = context.getSource().getServer()
+                                                        .getPlayerManager().getPlayer(targetName);
+                                                if (target == null) {
+                                                    player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                                    return 0;
+                                                }
+                                                PropertySystem.offerChunkToPlayer(player, world, target, price, currencyID);
+                                                return 1;
+                                            })))));
+
+// /ss property buy <listingID>
+            property.then(CommandManager.literal("buy")
+                    .then(CommandManager.argument("listingID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String listingID = StringArgumentType.getString(context, "listingID");
+                                PropertySystem.buyChunk(player, world, listingID);
+                                return 1;
+                            })));
+
+// /ss property accept <offerID>
+            property.then(CommandManager.literal("accept")
+                    .then(CommandManager.argument("offerID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String offerID = StringArgumentType.getString(context, "offerID");
+                                PropertySystem.acceptLandOffer(player, world, offerID);
+                                return 1;
+                            })));
+
+// /ss property reject <offerID>
+            property.then(CommandManager.literal("reject")
+                    .then(CommandManager.argument("offerID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String offerID = StringArgumentType.getString(context, "offerID");
+                                PropertySystem.rejectLandOffer(player, world, offerID);
+                                return 1;
+                            })));
+
+// /ss property listings
+            property.then(CommandManager.literal("listings")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        PropertySystem.browseListings(player, world);
+                        return 1;
+                    }));
+
+// /ss property info
+            property.then(CommandManager.literal("info")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        PropertySystem.showChunkInfo(player, world);
+                        return 1;
+                    }));
+
+            ss.then(property);
             ss.then(market);
             ss.then(currency);
 
