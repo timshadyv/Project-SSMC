@@ -22,22 +22,20 @@ public class CommandSystem {
 
             var ss = CommandManager.literal("ss");
 
-            // /ss found <name> <government> <genderpolicy>
+            // /ss found <name> <government>
             ss.then(CommandManager.literal("found")
                     .then(CommandManager.argument("name", StringArgumentType.word())
                             .then(CommandManager.argument("government", StringArgumentType.word())
-                                    .then(CommandManager.argument("genderpolicy", StringArgumentType.word())
-                                            .executes(context -> {
-                                                ServerCommandSource source = context.getSource();
-                                                ServerPlayerEntity player = source.getPlayer();
-                                                if (player == null) return 0;
-                                                ServerWorld world = source.getWorld();
-                                                String name = StringArgumentType.getString(context, "name");
-                                                String gov = StringArgumentType.getString(context, "government");
-                                                String gender = StringArgumentType.getString(context, "genderpolicy");
-                                                DivisionSystem.foundDivision(player, world, name, gov, gender, "neutral");
-                                                return 1;
-                                            })))));
+                                    .executes(context -> {
+                                        ServerCommandSource source = context.getSource();
+                                        ServerPlayerEntity player = source.getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = source.getWorld();
+                                        String name = StringArgumentType.getString(context, "name");
+                                        String gov = StringArgumentType.getString(context, "government");
+                                        DivisionSystem.foundDivision(player, world, name, gov, "neutral");
+                                        return 1;
+                                    }))));
 
             // /ss info
             ss.then(CommandManager.literal("info")

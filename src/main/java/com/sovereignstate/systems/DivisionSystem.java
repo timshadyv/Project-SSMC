@@ -19,7 +19,7 @@ public class DivisionSystem {
 
     public static String foundDivision(ServerPlayerEntity player, ServerWorld world,
                                        String name, String governmentType,
-                                       String genderPolicy, String ideology) {
+                                       String ideology) {
 
         DivisionData divData = DivisionData.get(world);
         PlayerStateData playerState = PlayerStateData.get(world);
@@ -39,7 +39,6 @@ public class DivisionSystem {
         String divisionID = divData.createDivision(name, 1, governmentType, uuid);
 
         // Set additional properties
-        divData.setGenderPolicy(divisionID, genderPolicy);
         divData.setLeader(divisionID, uuid, player.getName().getString());
         divData.setMotto(divisionID, "");
 
@@ -65,7 +64,6 @@ public class DivisionSystem {
         player.sendMessage(Text.literal("§a--- Division Founded ---"));
         player.sendMessage(Text.literal("§eName: §f" + name));
         player.sendMessage(Text.literal("§eGovernment: §f" + governmentType));
-        player.sendMessage(Text.literal("§eGender Policy: §f" + genderPolicy));
         player.sendMessage(Text.literal("§eYour Division ID: §f" + divisionID));
         player.sendMessage(Text.literal(
                 "§aYour current chunk has been set as the capital."));
@@ -123,8 +121,6 @@ public class DivisionSystem {
                 "§eLeader: §f" + div.getString("leaderName")));
         player.sendMessage(Text.literal(
                 "§eApproval: §f" + div.getInt("approvalRating") + "%"));
-        player.sendMessage(Text.literal(
-                "§eGender Policy: §f" + div.getString("genderPolicy")));
         player.sendMessage(Text.literal(
                 "§eState Religion: §f" + div.getString("stateReligion")));
         player.sendMessage(Text.literal(

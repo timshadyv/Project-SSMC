@@ -1,9 +1,10 @@
 package com.sovereignstate.systems;
 
 import com.sovereignstate.data.DivisionData;
+import com.sovereignstate.data.GovernmentTypes;
+import com.sovereignstate.data.LawTypes;
 import com.sovereignstate.data.PlayerStateData;
 import com.sovereignstate.data.WorldStateData;
-import com.sovereignstate.util.DivisionHelper;
 import com.sovereignstate.util.TextHelper;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.MinecraftServer;
@@ -11,68 +12,9 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class LawSystem {
-
-    // All valid law names and their categories
-    public static final Map<String, String> LAW_CATEGORIES = new HashMap<>();
-
-    static {
-        // Economic laws
-        LAW_CATEGORIES.put("income_tax_low", "economic");
-        LAW_CATEGORIES.put("income_tax_medium", "economic");
-        LAW_CATEGORIES.put("income_tax_high", "economic");
-        LAW_CATEGORIES.put("property_tax", "economic");
-        LAW_CATEGORIES.put("sales_tax", "economic");
-        LAW_CATEGORIES.put("free_trade", "economic");
-        LAW_CATEGORIES.put("trade_embargo", "economic");
-        LAW_CATEGORIES.put("currency_control", "economic");
-
-        // Social laws
-        LAW_CATEGORIES.put("male_suffrage", "social");
-        LAW_CATEGORIES.put("female_suffrage", "social");
-        LAW_CATEGORIES.put("universal_suffrage", "social");
-        LAW_CATEGORIES.put("male_property_rights", "social");
-        LAW_CATEGORIES.put("female_property_rights", "social");
-        LAW_CATEGORIES.put("universal_property_rights", "social");
-        LAW_CATEGORIES.put("freedom_of_religion", "social");
-        LAW_CATEGORIES.put("state_religion_enforcement", "social");
-        LAW_CATEGORIES.put("gender_self_declaration", "social");
-        LAW_CATEGORIES.put("marriage_law_heterosexual", "social");
-        LAW_CATEGORIES.put("marriage_law_open", "social");
-
-        // Military laws
-        LAW_CATEGORIES.put("conscription", "military");
-        LAW_CATEGORIES.put("professional_military", "military");
-        LAW_CATEGORIES.put("martial_law", "military");
-        LAW_CATEGORIES.put("border_closure", "military");
-        LAW_CATEGORIES.put("open_borders", "military");
-
-        // Political laws
-        LAW_CATEGORIES.put("free_press", "political");
-        LAW_CATEGORIES.put("press_censorship", "political");
-        LAW_CATEGORIES.put("party_ban", "political");
-        LAW_CATEGORIES.put("multiparty_system", "political");
-        LAW_CATEGORIES.put("sedition_law", "political");
-        LAW_CATEGORIES.put("political_prisoner_designation", "political");
-        LAW_CATEGORIES.put("loyalty_oath_requirement", "political");
-        LAW_CATEGORIES.put("curfew", "political");
-
-        // Dark laws
-        LAW_CATEGORIES.put("slave_class", "dark");
-        LAW_CATEGORIES.put("debt_bondage", "dark");
-        LAW_CATEGORIES.put("corvee", "dark");
-        LAW_CATEGORIES.put("prison_labour", "dark");
-        LAW_CATEGORIES.put("forced_assimilation", "dark");
-        LAW_CATEGORIES.put("cultural_suppression", "dark");
-        LAW_CATEGORIES.put("cultural_dress_ban", "dark");
-        LAW_CATEGORIES.put("caste_tax", "dark");
-        LAW_CATEGORIES.put("gender_tax_differential", "dark");
-        LAW_CATEGORIES.put("property_confiscation", "dark");
-    }
 
     // --- Submit a law ---
 
@@ -86,8 +28,8 @@ public class LawSystem {
             return;
         }
 
-        // Check law is valid
-        if (!LAW_CATEGORIES.containsKey(lawName)) {
+        // Validate law exists in registry
+        if (!LawTypes.isValid(lawName)) {
             player.sendMessage(Text.literal("§cUnknown law: " + lawName));
             player.sendMessage(Text.literal("§eUse /ss laws to see all valid laws."));
             return;
@@ -99,8 +41,18 @@ public class LawSystem {
             return;
         }
 
-        String category = LAW_CATEGORIES.get(lawName);
-        String darkCategory = TextHelper.getDarkLawCategory(lawName);
+        // Check if law is allowed under this government type
+        String govType = div.getString("governmentType");
+        GovernmentTypes.GovernmentType gov = GovernmentTypes.get(govType);
+        String govCategory = gov != null ? gov.category() : "";
+
+        LawTypes.LawType lawType = LawTypes.get(lawName);
+        if (!lawType.isAllowedUnder(govCategory)) {
+            player.sendMessage(Text.literal(
+                    "§cThe law '§f" + lawType.displayName() +
+                            "§c' is not available under a §f" + govType + "§c government."));
+            return;
+        }
 
         // Check constitution for conflicts
         List<String> constitution = divData.getConstitution(divisionID);
@@ -112,32 +64,29 @@ public class LawSystem {
             }
         }
 
-        // Get government type for permission check
-        String govType = div.getString("governmentType");
         String leaderUUID = div.getString("leaderUUID");
         String uuid = player.getUuid().toString();
 
-        // In monarchy/autocracy: only leader can pass laws
-        if (govType.equals("monarchy") || govType.equals("autocracy") ||
-                govType.equals("tribal")) {
+        // Authoritarian and monarchy governments: only leader can pass laws directly
+        if (govCategory.equals("monarchy") || govCategory.equals("authoritarian")) {
             if (!uuid.equals(leaderUUID)) {
                 player.sendMessage(Text.literal(
                         "§cOnly the leader can pass laws in a " + govType + "."));
                 return;
             }
-            enactLaw(player, world, divisionID, lawName, category, darkCategory);
+            enactLaw(player, world, divisionID, lawName, lawType);
             return;
         }
 
-        // In other governments: submit for vote
-        submitForVote(player, world, divisionID, lawName, category);
+        // All other governments: submit for vote
+        submitForVote(player, world, divisionID, lawName, lawType);
     }
 
     // --- Enact law directly ---
 
     private static void enactLaw(ServerPlayerEntity player, ServerWorld world,
                                  String divisionID, String lawName,
-                                 String category, String darkCategory) {
+                                 LawTypes.LawType lawType) {
         DivisionData divData = DivisionData.get(world);
         divData.addLaw(divisionID, lawName);
 
@@ -146,20 +95,19 @@ public class LawSystem {
 
         MinecraftServer server = player.getServer();
         if (server != null) {
-            String prefix = darkCategory != null ? "§c⚠ DARK LAW: " : "§a";
             TextHelper.broadcastToAll(server,
-                    prefix + "§e" + divName + "§a has enacted: §f" + lawName +
-                            " §7[" + category + "]");
+                    "§a§e" + divName + "§a has enacted: §f" + lawType.displayName() +
+                            " §7[" + lawType.category() + "]");
         }
 
-        player.sendMessage(Text.literal("§aLaw enacted: §f" + lawName));
+        player.sendMessage(Text.literal("§aLaw enacted: §f" + lawType.displayName()));
     }
 
     // --- Submit for vote ---
 
     private static void submitForVote(ServerPlayerEntity player, ServerWorld world,
                                       String divisionID, String lawName,
-                                      String category) {
+                                      LawTypes.LawType lawType) {
         WorldStateData worldState = WorldStateData.get(world);
 
         String voteKey = "vote_" + divisionID + "_" + lawName;
@@ -174,10 +122,10 @@ public class LawSystem {
             NbtCompound div = divData.getDivisionById(divisionID);
             String divName = div != null ? div.getString("name") : "Unknown";
             TextHelper.broadcastToAll(server,
-                    "§6Vote started in §e" + divName + "§6: §f" + lawName +
-                            " §7[" + category + "]");
+                    "§6Vote started in §e" + divName + "§6: §f" + lawType.displayName() +
+                            " §7[" + lawType.category() + "]");
             TextHelper.broadcastToAll(server,
-                    "§eUse §f/ss vote yes§e or §f/ss vote no§e to vote.");
+                    "§eUse §f/ss vote yes §e<lawname> or §f/ss vote no §e<lawname> to vote.");
         }
     }
 
@@ -248,14 +196,18 @@ public class LawSystem {
 
         divData.removeLaw(divisionID, lawName);
 
+        String displayName = LawTypes.isValid(lawName)
+                ? LawTypes.get(lawName).displayName()
+                : lawName;
+
         MinecraftServer server = player.getServer();
         if (server != null) {
             TextHelper.broadcastToAll(server,
                     "§c§e" + div.getString("name") +
-                            "§c has repealed: §f" + lawName);
+                            "§c has repealed: §f" + displayName);
         }
 
-        player.sendMessage(Text.literal("§aLaw repealed: §f" + lawName));
+        player.sendMessage(Text.literal("§aLaw repealed: §f" + displayName));
     }
 
     // --- List laws ---
@@ -272,11 +224,13 @@ public class LawSystem {
 
         player.sendMessage(Text.literal("§6--- Active Laws ---"));
         for (String law : laws) {
-            String category = LAW_CATEGORIES.getOrDefault(law, "unknown");
-            String darkCategory = TextHelper.getDarkLawCategory(law);
-            String prefix = darkCategory != null ? "§c⚠ " : "§a✓ ";
-            player.sendMessage(Text.literal(
-                    prefix + "§f" + law + " §7[" + category + "]"));
+            if (LawTypes.isValid(law)) {
+                LawTypes.LawType lawType = LawTypes.get(law);
+                player.sendMessage(Text.literal(
+                        "§a✓ §f" + lawType.displayName() + " §7[" + lawType.category() + "]"));
+            } else {
+                player.sendMessage(Text.literal("§e? §f" + law + " §7[unknown]"));
+            }
         }
     }
 
@@ -290,7 +244,8 @@ public class LawSystem {
             for (NbtCompound div : divData.getAllDivisions()) {
                 String divisionID = div.getString("id");
 
-                for (String lawName : LAW_CATEGORIES.keySet()) {
+                for (LawTypes.LawType lawType : LawTypes.getAll()) {
+                    String lawName = lawType.id();
                     String voteKey = "vote_" + divisionID + "_" + lawName;
                     if (!worldState.getTag(voteKey + "_status").equals("pending")) continue;
 
@@ -309,11 +264,13 @@ public class LawSystem {
                     if (yes > no) {
                         divData.addLaw(divisionID, lawName);
                         TextHelper.broadcastToAll(server,
-                                "§aVote passed in §e" + divName + "§a: §f" + lawName +
+                                "§aVote passed in §e" + divName + "§a: §f" +
+                                        lawType.displayName() +
                                         " §7(Yes: " + yes + " No: " + no + ")");
                     } else {
                         TextHelper.broadcastToAll(server,
-                                "§cVote failed in §e" + divName + "§c: §f" + lawName +
+                                "§cVote failed in §e" + divName + "§c: §f" +
+                                        lawType.displayName() +
                                         " §7(Yes: " + yes + " No: " + no + ")");
                     }
                 }

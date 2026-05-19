@@ -45,7 +45,6 @@ public class DivisionData extends PersistentState {
         div.putString("leaderName", "");
         div.putString("culture", "");
         div.putString("stateReligion", "");
-        div.putString("genderPolicy", "egalitarian");
         div.putString("officialCurrencyID", "");
         div.putString("parentDivisionID", "");
         div.putString("motto", "");
@@ -206,12 +205,6 @@ public class DivisionData extends PersistentState {
 
     // --- Setters ---
 
-    public void setGenderPolicy(String divisionID, String policy) {
-        NbtCompound div = getDivisionById(divisionID);
-        if (div == null) return;
-        div.putString("genderPolicy", policy);
-        markDirty();
-    }
 
     public void setCulture(String divisionID, String culture) {
         NbtCompound div = getDivisionById(divisionID);
