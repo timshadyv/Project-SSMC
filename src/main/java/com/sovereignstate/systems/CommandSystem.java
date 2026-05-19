@@ -338,7 +338,147 @@ public class CommandSystem {
                                                 CurrencySystem.transferCoins(player, world, target, currencyID, amount);
                                                 return 1;
                                             })))));
+// --- TRADE COMMANDS ---
+            var trade = CommandManager.literal("trade");
 
+// /ss trade offer <player> <currencyID> <amount>
+            trade.then(CommandManager.literal("offer")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                                    .then(CommandManager.argument("amount", IntegerArgumentType.integer(1))
+                                            .executes(context -> {
+                                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                                if (player == null) return 0;
+                                                ServerWorld world = context.getSource().getWorld();
+                                                String targetName = StringArgumentType.getString(context, "player");
+                                                String currencyID = StringArgumentType.getString(context, "currencyID");
+                                                int amount = IntegerArgumentType.getInteger(context, "amount");
+                                                ServerPlayerEntity target = context.getSource().getServer()
+                                                        .getPlayerManager().getPlayer(targetName);
+                                                if (target == null) {
+                                                    player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                                    return 0;
+                                                }
+                                                TradeSystem.offerCurrency(player, world, target, currencyID, amount);
+                                                return 1;
+                                            })))));
+
+// /ss trade offeritem <player> <price> <currencyID>
+            trade.then(CommandManager.literal("offeritem")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .then(CommandManager.argument("price", IntegerArgumentType.integer(1))
+                                    .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                                            .executes(context -> {
+                                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                                if (player == null) return 0;
+                                                ServerWorld world = context.getSource().getWorld();
+                                                String targetName = StringArgumentType.getString(context, "player");
+                                                int price = IntegerArgumentType.getInteger(context, "price");
+                                                String currencyID = StringArgumentType.getString(context, "currencyID");
+                                                ServerPlayerEntity target = context.getSource().getServer()
+                                                        .getPlayerManager().getPlayer(targetName);
+                                                if (target == null) {
+                                                    player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                                    return 0;
+                                                }
+                                                TradeSystem.offerItem(player, world, target, price, currencyID);
+                                                return 1;
+                                            })))));
+
+// /ss trade accept <offerID>
+            trade.then(CommandManager.literal("accept")
+                    .then(CommandManager.argument("offerID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String offerID = StringArgumentType.getString(context, "offerID");
+                                TradeSystem.acceptOffer(player, world, offerID);
+                                return 1;
+                            })));
+
+// /ss trade reject <offerID>
+            trade.then(CommandManager.literal("reject")
+                    .then(CommandManager.argument("offerID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String offerID = StringArgumentType.getString(context, "offerID");
+                                TradeSystem.rejectOffer(player, world, offerID);
+                                return 1;
+                            })));
+
+// /ss trade inbox
+            trade.then(CommandManager.literal("inbox")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        TradeSystem.showInbox(player, world);
+                        return 1;
+                    }));
+
+            ss.then(trade);
+
+// --- MARKET COMMANDS ---
+            var market = CommandManager.literal("market");
+
+// /ss market post <currencyID> <amount> <price> <priceCurrencyID>
+            market.then(CommandManager.literal("post")
+                    .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                            .then(CommandManager.argument("amount", IntegerArgumentType.integer(1))
+                                    .then(CommandManager.argument("price", IntegerArgumentType.integer(1))
+                                            .then(CommandManager.argument("priceCurrencyID", StringArgumentType.word())
+                                                    .executes(context -> {
+                                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                                        if (player == null) return 0;
+                                                        ServerWorld world = context.getSource().getWorld();
+                                                        String currencyID = StringArgumentType.getString(context, "currencyID");
+                                                        int amount = IntegerArgumentType.getInteger(context, "amount");
+                                                        int price = IntegerArgumentType.getInteger(context, "price");
+                                                        String priceCurrencyID = StringArgumentType.getString(context, "priceCurrencyID");
+                                                        TradeSystem.postCurrencyListing(player, world, currencyID, amount, price, priceCurrencyID);
+                                                        return 1;
+                                                    }))))));
+
+// /ss market postitem <price> <priceCurrencyID>
+            market.then(CommandManager.literal("postitem")
+                    .then(CommandManager.argument("price", IntegerArgumentType.integer(1))
+                            .then(CommandManager.argument("priceCurrencyID", StringArgumentType.word())
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        int price = IntegerArgumentType.getInteger(context, "price");
+                                        String priceCurrencyID = StringArgumentType.getString(context, "priceCurrencyID");
+                                        TradeSystem.postItemListing(player, world, price, priceCurrencyID);
+                                        return 1;
+                                    }))));
+
+// /ss market browse
+            market.then(CommandManager.literal("browse")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        TradeSystem.browseMarket(player, world);
+                        return 1;
+                    }));
+
+// /ss market buy <listingID>
+            market.then(CommandManager.literal("buy")
+                    .then(CommandManager.argument("listingID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String listingID = StringArgumentType.getString(context, "listingID");
+                                TradeSystem.buyListing(player, world, listingID);
+                                return 1;
+                            })));
+
+            ss.then(market);
             ss.then(currency);
 
             dispatcher.register(ss);
