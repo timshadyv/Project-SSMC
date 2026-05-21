@@ -7,6 +7,7 @@ import com.sovereignstate.data.PlayerStateData;
 import com.sovereignstate.systems.ContractSystem;
 import com.sovereignstate.systems.PropertySystem;
 import com.sovereignstate.systems.TradeSystem;
+import com.sovereignstate.data.ArmyData;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.command.CommandManager;
@@ -1063,6 +1064,154 @@ public class CommandSystem {
                     }));
 
             ss.then(diplomacy);
+            // --- MILITARY ---
+            var military = CommandManager.literal("military");
+
+            // /ss military raise <name> <unitType> <count>
+            military.then(CommandManager.literal("raise")
+                    .then(CommandManager.argument("name", StringArgumentType.word())
+                            .then(CommandManager.argument("unitType", StringArgumentType.word())
+                                    .then(CommandManager.argument("count", IntegerArgumentType.integer(1))
+                                            .executes(context -> {
+                                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                                if (player == null) return 0;
+                                                ServerWorld world = context.getSource().getWorld();
+                                                String name = StringArgumentType.getString(context, "name");
+                                                String unitType = StringArgumentType.getString(context, "unitType");
+                                                int count = IntegerArgumentType.getInteger(context, "count");
+                                                MilitarySystem.raiseArmy(player, world, name, unitType, count);
+                                                return 1;
+                                            })))));
+
+            // /ss military disband <armyID>
+            military.then(CommandManager.literal("disband")
+                    .then(CommandManager.argument("armyID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String armyID = StringArgumentType.getString(context, "armyID");
+                                MilitarySystem.disbandArmy(player, world, armyID);
+                                return 1;
+                            })));
+
+            // /ss military deploy <armyID>
+            military.then(CommandManager.literal("deploy")
+                    .then(CommandManager.argument("armyID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String armyID = StringArgumentType.getString(context, "armyID");
+                                MilitarySystem.deployArmy(player, world, armyID);
+                                return 1;
+                            })));
+
+            // /ss military reinforce <armyID> <count>
+            military.then(CommandManager.literal("reinforce")
+                    .then(CommandManager.argument("armyID", StringArgumentType.word())
+                            .then(CommandManager.argument("count", IntegerArgumentType.integer(1))
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String armyID = StringArgumentType.getString(context, "armyID");
+                                        int count = IntegerArgumentType.getInteger(context, "count");
+                                        MilitarySystem.reinforceArmy(player, world, armyID, count);
+                                        return 1;
+                                    }))));
+
+            // /ss military assigngeneral <armyID> <player>
+            military.then(CommandManager.literal("assigngeneral")
+                    .then(CommandManager.argument("armyID", StringArgumentType.word())
+                            .then(CommandManager.argument("player", StringArgumentType.word())
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String armyID = StringArgumentType.getString(context, "armyID");
+                                        String targetName = StringArgumentType.getString(context, "player");
+                                        ServerPlayerEntity target = context.getSource().getServer()
+                                                .getPlayerManager().getPlayer(targetName);
+                                        if (target == null) {
+                                            player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                            return 0;
+                                        }
+                                        MilitarySystem.assignGeneral(player, world, armyID, target);
+                                        return 1;
+                                    }))));
+
+            // /ss military conscript <player>
+            military.then(CommandManager.literal("conscript")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String targetName = StringArgumentType.getString(context, "player");
+                                ServerPlayerEntity target = context.getSource().getServer()
+                                        .getPlayerManager().getPlayer(targetName);
+                                if (target == null) {
+                                    player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                    return 0;
+                                }
+                                MilitarySystem.conscriptPlayer(player, world, target);
+                                return 1;
+                            })));
+
+            // /ss military rank <player> <rank>
+            military.then(CommandManager.literal("rank")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .then(CommandManager.argument("rank", StringArgumentType.word())
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String targetName = StringArgumentType.getString(context, "player");
+                                        String rank = StringArgumentType.getString(context, "rank");
+                                        ServerPlayerEntity target = context.getSource().getServer()
+                                                .getPlayerManager().getPlayer(targetName);
+                                        if (target == null) {
+                                            player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                            return 0;
+                                        }
+                                        MilitarySystem.setRank(player, world, target, rank);
+                                        return 1;
+                                    }))));
+
+            // /ss military list
+            military.then(CommandManager.literal("list")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        MilitarySystem.listArmies(player, world);
+                        return 1;
+                    }));
+
+            // /ss military info <armyID>
+            military.then(CommandManager.literal("info")
+                    .then(CommandManager.argument("armyID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String armyID = StringArgumentType.getString(context, "armyID");
+                                MilitarySystem.showArmyInfo(player, world, armyID);
+                                return 1;
+                            })));
+
+            // /ss military myrank
+            military.then(CommandManager.literal("myrank")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        MilitarySystem.showMyRank(player, world);
+                        return 1;
+                    }));
+
+            ss.then(military);
             dispatcher.register(ss);
         });
     }
