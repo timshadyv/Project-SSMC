@@ -205,4 +205,18 @@ public class DivisionSystem {
         playerState.setDivisionID(uuid, "");
         player.sendMessage(Text.literal("§aYou have left §e" + divName + "§a."));
     }
+    /** Returns the display name of a division by ID, or null if not found */
+    public static String getDivisionName(ServerWorld world, String divisionID) {
+        NbtCompound div = DivisionData.get(world).getDivisionById(divisionID);
+        return div != null ? div.getString("name") : null;
+    }
+
+    /** Returns true if the player is the leader of their division */
+    public static boolean isLeader(ServerWorld world, ServerPlayerEntity player) {
+        String uuid = player.getUuid().toString();
+        String divID = PlayerStateData.get(world).getDivisionID(uuid);
+        if (divID == null || divID.isEmpty()) return false;
+        NbtCompound div = DivisionData.get(world).getDivisionById(divID);
+        return div != null && div.getString("leaderUUID").equals(uuid);
+    }
 }

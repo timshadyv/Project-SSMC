@@ -721,7 +721,348 @@ public class CommandSystem {
                                     }))));
 
             ss.then(contract);
+// --- DIPLOMACY ---
+            var diplomacy = CommandManager.literal("diplomacy");
+            var alliance = CommandManager.literal("alliance");
+            var war = CommandManager.literal("war");
+            var peace = CommandManager.literal("peace");
+            var vassal = CommandManager.literal("vassal");
 
+            // /ss diplomacy alliance propose <divID>
+            alliance.then(CommandManager.literal("propose")
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                String targetDiv = StringArgumentType.getString(context, "divID");
+                                if (DivisionSystem.getDivisionName(world, targetDiv) == null) {
+                                    player.sendMessage(Text.literal("§cDivision not found.")); return 0;
+                                }
+                                if (!DivisionSystem.isLeader(world, player)) {
+                                    player.sendMessage(Text.literal("§cOnly the division leader can propose alliances.")); return 0;
+                                }
+                                boolean ok = DiplomacySystem.proposeAlliance(world, myDiv, targetDiv);
+                                if (ok) player.sendMessage(Text.literal("§aAlliance proposal sent to §e" + DivisionSystem.getDivisionName(world, targetDiv) + "§a."));
+                                else player.sendMessage(Text.literal("§cCould not send proposal. Already allied, at war, or proposal already pending."));
+                                return 1;
+                            })));
+
+            // /ss diplomacy alliance accept <divID>
+            alliance.then(CommandManager.literal("accept")
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                if (!DivisionSystem.isLeader(world, player)) {
+                                    player.sendMessage(Text.literal("§cOnly the division leader can accept alliances.")); return 0;
+                                }
+                                String proposerDiv = StringArgumentType.getString(context, "divID");
+                                boolean ok = DiplomacySystem.acceptAlliance(world, myDiv, proposerDiv);
+                                if (ok) player.sendMessage(Text.literal("§aAlliance formed with §e" + DivisionSystem.getDivisionName(world, proposerDiv) + "§a!"));
+                                else player.sendMessage(Text.literal("§cNo alliance proposal found from that division."));
+                                return 1;
+                            })));
+
+            // /ss diplomacy alliance reject <divID>
+            alliance.then(CommandManager.literal("reject")
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                String proposerDiv = StringArgumentType.getString(context, "divID");
+                                boolean ok = DiplomacySystem.rejectAlliance(world, myDiv, proposerDiv);
+                                if (ok) player.sendMessage(Text.literal("§eAlliance proposal rejected."));
+                                else player.sendMessage(Text.literal("§cNo proposal found from that division."));
+                                return 1;
+                            })));
+
+            // /ss diplomacy alliance leave <divID>
+            alliance.then(CommandManager.literal("leave")
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                if (!DivisionSystem.isLeader(world, player)) {
+                                    player.sendMessage(Text.literal("§cOnly the division leader can leave an alliance.")); return 0;
+                                }
+                                String allyDiv = StringArgumentType.getString(context, "divID");
+                                boolean ok = DiplomacySystem.leaveAlliance(world, myDiv, allyDiv);
+                                if (ok) player.sendMessage(Text.literal("§eYou have left the alliance with §c" + DivisionSystem.getDivisionName(world, allyDiv) + "§e."));
+                                else player.sendMessage(Text.literal("§cYou are not allied with that division."));
+                                return 1;
+                            })));
+
+            diplomacy.then(alliance);
+
+            // /ss diplomacy war declare <divID>
+            war.then(CommandManager.literal("declare")
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                if (!DivisionSystem.isLeader(world, player)) {
+                                    player.sendMessage(Text.literal("§cOnly the division leader can declare war.")); return 0;
+                                }
+                                String targetDiv = StringArgumentType.getString(context, "divID");
+                                DiplomacySystem.DeclareWarResult result = DiplomacySystem.declareWar(world, myDiv, targetDiv, false);
+                                switch (result) {
+                                    case SUCCESS -> player.sendMessage(Text.literal("§c⚔ War declared on §e" + DivisionSystem.getDivisionName(world, targetDiv) + "§c!"));
+                                    case NO_CASUS_BELLI -> player.sendMessage(Text.literal("§cYou have no casus belli against that division."));
+                                    case ALREADY_AT_WAR -> player.sendMessage(Text.literal("§cYou are already at war with that division."));
+                                    case DIVISION_NOT_FOUND -> player.sendMessage(Text.literal("§cDivision not found."));
+                                }
+                                return 1;
+                            })));
+
+            // /ss diplomacy war declareforce <divID>  (op-level override)
+            war.then(CommandManager.literal("declareforce")
+                    .requires(src -> src.hasPermissionLevel(2))
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                String targetDiv = StringArgumentType.getString(context, "divID");
+                                DiplomacySystem.DeclareWarResult result = DiplomacySystem.declareWar(world, myDiv, targetDiv, true);
+                                if (result == DiplomacySystem.DeclareWarResult.SUCCESS)
+                                    player.sendMessage(Text.literal("§c⚔ War force-declared on §e" + DivisionSystem.getDivisionName(world, targetDiv) + "§c!"));
+                                else player.sendMessage(Text.literal("§cFailed: " + result.name()));
+                                return 1;
+                            })));
+
+            diplomacy.then(war);
+
+            // /ss diplomacy peace propose <divID>
+            peace.then(CommandManager.literal("propose")
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                if (!DivisionSystem.isLeader(world, player)) {
+                                    player.sendMessage(Text.literal("§cOnly the division leader can propose peace.")); return 0;
+                                }
+                                String targetDiv = StringArgumentType.getString(context, "divID");
+                                boolean ok = DiplomacySystem.proposePeace(world, myDiv, targetDiv);
+                                if (ok) player.sendMessage(Text.literal("§aPeace proposal sent to §e" + DivisionSystem.getDivisionName(world, targetDiv) + "§a."));
+                                else player.sendMessage(Text.literal("§cYou are not at war with that division, or proposal already sent."));
+                                return 1;
+                            })));
+
+            // /ss diplomacy peace accept <divID>
+            peace.then(CommandManager.literal("accept")
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                if (!DivisionSystem.isLeader(world, player)) {
+                                    player.sendMessage(Text.literal("§cOnly the division leader can accept peace.")); return 0;
+                                }
+                                String proposerDiv = StringArgumentType.getString(context, "divID");
+                                boolean ok = DiplomacySystem.acceptPeace(world, myDiv, proposerDiv);
+                                if (ok) player.sendMessage(Text.literal("§aPeace agreed with §e" + DivisionSystem.getDivisionName(world, proposerDiv) + "§a."));
+                                else player.sendMessage(Text.literal("§cNo peace proposal found from that division."));
+                                return 1;
+                            })));
+
+            // /ss diplomacy peace reject <divID>
+            peace.then(CommandManager.literal("reject")
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                String proposerDiv = StringArgumentType.getString(context, "divID");
+                                boolean ok = DiplomacySystem.rejectPeace(world, myDiv, proposerDiv);
+                                if (ok) player.sendMessage(Text.literal("§ePeace proposal rejected."));
+                                else player.sendMessage(Text.literal("§cNo peace proposal found from that division."));
+                                return 1;
+                            })));
+
+            diplomacy.then(peace);
+
+            // /ss diplomacy vassal propose <divID>  (propose to make them YOUR vassal)
+            vassal.then(CommandManager.literal("propose")
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                if (!DivisionSystem.isLeader(world, player)) {
+                                    player.sendMessage(Text.literal("§cOnly the division leader can propose vassalage.")); return 0;
+                                }
+                                String subjectDiv = StringArgumentType.getString(context, "divID");
+                                boolean ok = DiplomacySystem.proposeVassal(world, myDiv, subjectDiv);
+                                if (ok) player.sendMessage(Text.literal("§aVassalage proposal sent to §e" + DivisionSystem.getDivisionName(world, subjectDiv) + "§a."));
+                                else player.sendMessage(Text.literal("§cCould not send proposal. They may already have an overlord or you are at war."));
+                                return 1;
+                            })));
+
+            // /ss diplomacy vassal accept <divID>  (accept that divID becomes your overlord)
+            vassal.then(CommandManager.literal("accept")
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                if (!DivisionSystem.isLeader(world, player)) {
+                                    player.sendMessage(Text.literal("§cOnly the division leader can accept vassalage.")); return 0;
+                                }
+                                String overlordDiv = StringArgumentType.getString(context, "divID");
+                                boolean ok = DiplomacySystem.acceptVassal(world, myDiv, overlordDiv);
+                                if (ok) player.sendMessage(Text.literal("§aYou are now a vassal of §e" + DivisionSystem.getDivisionName(world, overlordDiv) + "§a."));
+                                else player.sendMessage(Text.literal("§cNo vassalage proposal found from that division."));
+                                return 1;
+                            })));
+
+            // /ss diplomacy vassal reject <divID>
+            vassal.then(CommandManager.literal("reject")
+                    .then(CommandManager.argument("divID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                                if (myDiv == null || myDiv.isEmpty()) {
+                                    player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                                }
+                                String overlordDiv = StringArgumentType.getString(context, "divID");
+                                boolean ok = DiplomacySystem.rejectVassal(world, myDiv, overlordDiv);
+                                if (ok) player.sendMessage(Text.literal("§eVassalage proposal rejected."));
+                                else player.sendMessage(Text.literal("§cNo vassalage proposal from that division."));
+                                return 1;
+                            })));
+
+            // /ss diplomacy vassal independence
+            vassal.then(CommandManager.literal("independence")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                        if (myDiv == null || myDiv.isEmpty()) {
+                            player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                        }
+                        if (!DivisionSystem.isLeader(world, player)) {
+                            player.sendMessage(Text.literal("§cOnly the division leader can declare independence.")); return 0;
+                        }
+                        boolean ok = DiplomacySystem.declareIndependence(world, myDiv);
+                        if (ok) player.sendMessage(Text.literal("§6You have declared independence! Your overlord now has casus belli against you."));
+                        else player.sendMessage(Text.literal("§cYou are not a vassal of any division."));
+                        return 1;
+                    }));
+
+            diplomacy.then(vassal);
+
+            // /ss diplomacy status
+            diplomacy.then(CommandManager.literal("status")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                        if (myDiv == null || myDiv.isEmpty()) {
+                            player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                        }
+                        player.sendMessage(Text.literal("§6--- Diplomacy Status ---"));
+                        List<String> allies = DiplomacySystem.getAllies(world, myDiv);
+                        List<String> enemies = DiplomacySystem.getEnemies(world, myDiv);
+                        List<String> vassals = DiplomacySystem.getVassals(world, myDiv);
+                        String overlord = DiplomacySystem.getOverlord(world, myDiv);
+                        if (overlord != null)
+                            player.sendMessage(Text.literal("§eOverlord: §f" + DivisionSystem.getDivisionName(world, overlord) + " §7(" + overlord + ")"));
+                        if (!vassals.isEmpty()) {
+                            StringBuilder vb = new StringBuilder("§eVassals: §f");
+                            for (String v : vassals) vb.append(DivisionSystem.getDivisionName(world, v)).append(" §7(").append(v).append(")§f ");
+                            player.sendMessage(Text.literal(vb.toString()));
+                        }
+                        if (!allies.isEmpty()) {
+                            StringBuilder ab = new StringBuilder("§aAllies: §f");
+                            for (String a : allies) ab.append(DivisionSystem.getDivisionName(world, a)).append(" §7(").append(a).append(")§f ");
+                            player.sendMessage(Text.literal(ab.toString()));
+                        } else player.sendMessage(Text.literal("§aAllies: §7none"));
+                        if (!enemies.isEmpty()) {
+                            StringBuilder eb = new StringBuilder("§cAt war with: §f");
+                            for (String e : enemies) eb.append(DivisionSystem.getDivisionName(world, e)).append(" §7(").append(e).append(")§f ");
+                            player.sendMessage(Text.literal(eb.toString()));
+                        } else player.sendMessage(Text.literal("§cAt war with: §7none"));
+                        return 1;
+                    }));
+
+            // /ss diplomacy inbox
+            diplomacy.then(CommandManager.literal("inbox")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        String myDiv = PlayerStateData.get(world).getDivisionID(player.getUuid().toString());
+                        if (myDiv == null || myDiv.isEmpty()) {
+                            player.sendMessage(Text.literal("§cYou are not in a division.")); return 0;
+                        }
+                        player.sendMessage(Text.literal("§6--- Diplomacy Inbox ---"));
+                        List<String> ap = DiplomacySystem.getIncomingAllianceProposals(world, myDiv);
+                        List<String> pp = DiplomacySystem.getIncomingPeaceProposals(world, myDiv);
+                        List<String> vp = DiplomacySystem.getIncomingVassalProposals(world, myDiv);
+                        if (ap.isEmpty() && pp.isEmpty() && vp.isEmpty()) {
+                            player.sendMessage(Text.literal("§7No pending proposals.")); return 1;
+                        }
+                        for (String d : ap) player.sendMessage(Text.literal("§a[Alliance] from §e" + DivisionSystem.getDivisionName(world, d) + " §7(" + d + ")"));
+                        for (String d : pp) player.sendMessage(Text.literal("§b[Peace] from §e" + DivisionSystem.getDivisionName(world, d) + " §7(" + d + ")"));
+                        for (String d : vp) player.sendMessage(Text.literal("§6[Vassal] §e" + DivisionSystem.getDivisionName(world, d) + " §6wants you as their vassal §7(" + d + ")"));
+                        return 1;
+                    }));
+
+            ss.then(diplomacy);
             dispatcher.register(ss);
         });
     }
