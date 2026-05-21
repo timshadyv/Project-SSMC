@@ -4,6 +4,9 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.sovereignstate.data.DivisionData;
 import com.sovereignstate.data.PlayerStateData;
+import com.sovereignstate.systems.ContractSystem;
+import com.sovereignstate.systems.PropertySystem;
+import com.sovereignstate.systems.TradeSystem;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.command.CommandManager;
@@ -11,8 +14,6 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import com.sovereignstate.systems.CurrencySystem;
-import com.sovereignstate.systems.PropertySystem;
 
 import java.util.List;
 
@@ -260,7 +261,7 @@ public class CommandSystem {
                                         return 1;
                                     }))));
 
-            // /ss currency create <name> <namePlural> <symbol> <baseValue> <mintRate>
+            // --- CURRENCY ---
             var currency = CommandManager.literal("currency");
 
             currency.then(CommandManager.literal("create")
@@ -339,10 +340,12 @@ public class CommandSystem {
                                                 CurrencySystem.transferCoins(player, world, target, currencyID, amount);
                                                 return 1;
                                             })))));
-// --- TRADE COMMANDS ---
+
+            ss.then(currency);
+
+            // --- TRADE ---
             var trade = CommandManager.literal("trade");
 
-// /ss trade offer <player> <currencyID> <amount>
             trade.then(CommandManager.literal("offer")
                     .then(CommandManager.argument("player", StringArgumentType.word())
                             .then(CommandManager.argument("currencyID", StringArgumentType.word())
@@ -364,7 +367,6 @@ public class CommandSystem {
                                                 return 1;
                                             })))));
 
-// /ss trade offeritem <player> <price> <currencyID>
             trade.then(CommandManager.literal("offeritem")
                     .then(CommandManager.argument("player", StringArgumentType.word())
                             .then(CommandManager.argument("price", IntegerArgumentType.integer(1))
@@ -386,7 +388,6 @@ public class CommandSystem {
                                                 return 1;
                                             })))));
 
-// /ss trade accept <offerID>
             trade.then(CommandManager.literal("accept")
                     .then(CommandManager.argument("offerID", StringArgumentType.word())
                             .executes(context -> {
@@ -398,7 +399,6 @@ public class CommandSystem {
                                 return 1;
                             })));
 
-// /ss trade reject <offerID>
             trade.then(CommandManager.literal("reject")
                     .then(CommandManager.argument("offerID", StringArgumentType.word())
                             .executes(context -> {
@@ -410,7 +410,6 @@ public class CommandSystem {
                                 return 1;
                             })));
 
-// /ss trade inbox
             trade.then(CommandManager.literal("inbox")
                     .executes(context -> {
                         ServerPlayerEntity player = context.getSource().getPlayer();
@@ -422,10 +421,9 @@ public class CommandSystem {
 
             ss.then(trade);
 
-// --- MARKET COMMANDS ---
+            // --- MARKET ---
             var market = CommandManager.literal("market");
 
-// /ss market post <currencyID> <amount> <price> <priceCurrencyID>
             market.then(CommandManager.literal("post")
                     .then(CommandManager.argument("currencyID", StringArgumentType.word())
                             .then(CommandManager.argument("amount", IntegerArgumentType.integer(1))
@@ -443,7 +441,6 @@ public class CommandSystem {
                                                         return 1;
                                                     }))))));
 
-// /ss market postitem <price> <priceCurrencyID>
             market.then(CommandManager.literal("postitem")
                     .then(CommandManager.argument("price", IntegerArgumentType.integer(1))
                             .then(CommandManager.argument("priceCurrencyID", StringArgumentType.word())
@@ -457,7 +454,6 @@ public class CommandSystem {
                                         return 1;
                                     }))));
 
-// /ss market browse
             market.then(CommandManager.literal("browse")
                     .executes(context -> {
                         ServerPlayerEntity player = context.getSource().getPlayer();
@@ -467,7 +463,6 @@ public class CommandSystem {
                         return 1;
                     }));
 
-// /ss market buy <listingID>
             market.then(CommandManager.literal("buy")
                     .then(CommandManager.argument("listingID", StringArgumentType.word())
                             .executes(context -> {
@@ -478,10 +473,12 @@ public class CommandSystem {
                                 TradeSystem.buyListing(player, world, listingID);
                                 return 1;
                             })));
-// --- PROPERTY COMMANDS ---
+
+            ss.then(market);
+
+            // --- PROPERTY ---
             var property = CommandManager.literal("property");
 
-// /ss property sell <price> <currencyID>
             property.then(CommandManager.literal("sell")
                     .then(CommandManager.argument("price", IntegerArgumentType.integer(1))
                             .then(CommandManager.argument("currencyID", StringArgumentType.word())
@@ -495,7 +492,6 @@ public class CommandSystem {
                                         return 1;
                                     }))));
 
-// /ss property offer <player> <price> <currencyID>
             property.then(CommandManager.literal("offer")
                     .then(CommandManager.argument("player", StringArgumentType.word())
                             .then(CommandManager.argument("price", IntegerArgumentType.integer(1))
@@ -517,7 +513,6 @@ public class CommandSystem {
                                                 return 1;
                                             })))));
 
-// /ss property buy <listingID>
             property.then(CommandManager.literal("buy")
                     .then(CommandManager.argument("listingID", StringArgumentType.word())
                             .executes(context -> {
@@ -529,7 +524,6 @@ public class CommandSystem {
                                 return 1;
                             })));
 
-// /ss property accept <offerID>
             property.then(CommandManager.literal("accept")
                     .then(CommandManager.argument("offerID", StringArgumentType.word())
                             .executes(context -> {
@@ -541,7 +535,6 @@ public class CommandSystem {
                                 return 1;
                             })));
 
-// /ss property reject <offerID>
             property.then(CommandManager.literal("reject")
                     .then(CommandManager.argument("offerID", StringArgumentType.word())
                             .executes(context -> {
@@ -553,7 +546,6 @@ public class CommandSystem {
                                 return 1;
                             })));
 
-// /ss property listings
             property.then(CommandManager.literal("listings")
                     .executes(context -> {
                         ServerPlayerEntity player = context.getSource().getPlayer();
@@ -563,7 +555,6 @@ public class CommandSystem {
                         return 1;
                     }));
 
-// /ss property info
             property.then(CommandManager.literal("info")
                     .executes(context -> {
                         ServerPlayerEntity player = context.getSource().getPlayer();
@@ -574,8 +565,162 @@ public class CommandSystem {
                     }));
 
             ss.then(property);
-            ss.then(market);
-            ss.then(currency);
+
+            // --- CONTRACT ---
+            var contract = CommandManager.literal("contract");
+            var contractCreate = CommandManager.literal("create");
+
+            contractCreate.then(CommandManager.literal("trade")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                                    .then(CommandManager.argument("amount", IntegerArgumentType.integer(1))
+                                            .then(CommandManager.argument("intervalDays", IntegerArgumentType.integer(1))
+                                                    .executes(context -> {
+                                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                                        if (player == null) return 0;
+                                                        ServerWorld world = context.getSource().getWorld();
+                                                        String targetName = StringArgumentType.getString(context, "player");
+                                                        String currencyID = StringArgumentType.getString(context, "currencyID");
+                                                        int amount = IntegerArgumentType.getInteger(context, "amount");
+                                                        int intervalDays = IntegerArgumentType.getInteger(context, "intervalDays");
+                                                        ServerPlayerEntity target = context.getSource().getServer()
+                                                                .getPlayerManager().getPlayer(targetName);
+                                                        if (target == null) {
+                                                            player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                                            return 0;
+                                                        }
+                                                        ContractSystem.createTradeAgreement(player, world, target, currencyID, amount, intervalDays);
+                                                        return 1;
+                                                    }))))));
+
+            contractCreate.then(CommandManager.literal("nap")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .then(CommandManager.argument("durationDays", IntegerArgumentType.integer(1))
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String targetName = StringArgumentType.getString(context, "player");
+                                        int durationDays = IntegerArgumentType.getInteger(context, "durationDays");
+                                        ServerPlayerEntity target = context.getSource().getServer()
+                                                .getPlayerManager().getPlayer(targetName);
+                                        if (target == null) {
+                                            player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                            return 0;
+                                        }
+                                        ContractSystem.createNAP(player, world, target, durationDays);
+                                        return 1;
+                                    }))));
+
+            contractCreate.then(CommandManager.literal("loan")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                                    .then(CommandManager.argument("amount", IntegerArgumentType.integer(1))
+                                            .then(CommandManager.argument("interestPercent", IntegerArgumentType.integer(0))
+                                                    .then(CommandManager.argument("repayDays", IntegerArgumentType.integer(1))
+                                                            .executes(context -> {
+                                                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                                                if (player == null) return 0;
+                                                                ServerWorld world = context.getSource().getWorld();
+                                                                String targetName = StringArgumentType.getString(context, "player");
+                                                                String currencyID = StringArgumentType.getString(context, "currencyID");
+                                                                int amount = IntegerArgumentType.getInteger(context, "amount");
+                                                                int interest = IntegerArgumentType.getInteger(context, "interestPercent");
+                                                                int repayDays = IntegerArgumentType.getInteger(context, "repayDays");
+                                                                ServerPlayerEntity target = context.getSource().getServer()
+                                                                        .getPlayerManager().getPlayer(targetName);
+                                                                if (target == null) {
+                                                                    player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                                                    return 0;
+                                                                }
+                                                                ContractSystem.createLoan(player, world, target, currencyID, amount, interest, repayDays);
+                                                                return 1;
+                                                            })))))));
+
+            contract.then(contractCreate);
+
+            contract.then(CommandManager.literal("sign")
+                    .then(CommandManager.argument("contractID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String contractID = StringArgumentType.getString(context, "contractID");
+                                ContractSystem.signContract(player, world, contractID);
+                                return 1;
+                            })));
+
+            contract.then(CommandManager.literal("addclause")
+                    .then(CommandManager.argument("contractID", StringArgumentType.word())
+                            .then(CommandManager.argument("text", StringArgumentType.greedyString())
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String contractID = StringArgumentType.getString(context, "contractID");
+                                        String text = StringArgumentType.getString(context, "text");
+                                        ContractSystem.addClause(player, world, contractID, text);
+                                        return 1;
+                                    }))));
+
+            contract.then(CommandManager.literal("removeclause")
+                    .then(CommandManager.argument("contractID", StringArgumentType.word())
+                            .then(CommandManager.argument("index", IntegerArgumentType.integer(0))
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String contractID = StringArgumentType.getString(context, "contractID");
+                                        int index = IntegerArgumentType.getInteger(context, "index");
+                                        ContractSystem.removeClause(player, world, contractID, index);
+                                        return 1;
+                                    }))));
+
+            contract.then(CommandManager.literal("list")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        ContractSystem.listContracts(player, world);
+                        return 1;
+                    }));
+
+            contract.then(CommandManager.literal("info")
+                    .then(CommandManager.argument("contractID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String contractID = StringArgumentType.getString(context, "contractID");
+                                ContractSystem.showContractInfo(player, world, contractID);
+                                return 1;
+                            })));
+
+            contract.then(CommandManager.literal("cancel")
+                    .then(CommandManager.argument("contractID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String contractID = StringArgumentType.getString(context, "contractID");
+                                ContractSystem.cancelContract(player, world, contractID);
+                                return 1;
+                            })));
+
+            contract.then(CommandManager.literal("decide")
+                    .then(CommandManager.argument("contractID", StringArgumentType.word())
+                            .then(CommandManager.argument("decision", StringArgumentType.word())
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String contractID = StringArgumentType.getString(context, "contractID");
+                                        String decision = StringArgumentType.getString(context, "decision");
+                                        ContractSystem.handleBreachDecision(player, world, contractID, decision);
+                                        return 1;
+                                    }))));
+
+            ss.then(contract);
 
             dispatcher.register(ss);
         });

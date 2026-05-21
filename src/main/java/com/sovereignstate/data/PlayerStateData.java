@@ -141,4 +141,19 @@ public class PlayerStateData extends PersistentState {
     // --- Prison Labour ---
     public boolean isPrisonLabourActive(String uuid) { return data.getBoolean(key(uuid, "isPrisonLabourActive")); }
     public void setPrisonLabourActive(String uuid, boolean value) { data.putBoolean(key(uuid, "isPrisonLabourActive"), value); markDirty(); }
-}
+// --- Wanted / Arrest ---
+
+    public void setWantedReason(String uuid, String reason) {
+        data.putString(key(uuid, "wantedReason"), reason);
+        markDirty();
+    }
+
+    public String getWantedReason(String uuid) {
+        return data.getString(key(uuid, "wantedReason"));
+    }
+
+    public void clearWanted(String uuid) {
+        data.putBoolean(key(uuid, "wanted"), false);
+        data.putString(key(uuid, "wantedReason"), "");
+        markDirty();
+    }}
