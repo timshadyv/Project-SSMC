@@ -8,6 +8,7 @@ import com.sovereignstate.systems.ContractSystem;
 import com.sovereignstate.systems.PropertySystem;
 import com.sovereignstate.systems.TradeSystem;
 import com.sovereignstate.data.ArmyData;
+import com.sovereignstate.systems.CourtSystem;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.command.CommandManager;
@@ -1211,7 +1212,174 @@ public class CommandSystem {
                         return 1;
                     }));
 
-            ss.then(military);
+            ss.then(military);// --- COURT ---
+            var court = CommandManager.literal("court");
+
+            // /ss court appointjudge <player>
+            court.then(CommandManager.literal("appointjudge")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String targetName = StringArgumentType.getString(context, "player");
+                                ServerPlayerEntity target = context.getSource().getServer()
+                                        .getPlayerManager().getPlayer(targetName);
+                                if (target == null) {
+                                    player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                    return 0;
+                                }
+                                CourtSystem.appointJudge(player, world, target);
+                                return 1;
+                            })));
+
+            // /ss court file <player> <charges>
+            court.then(CommandManager.literal("file")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .then(CommandManager.argument("charges", StringArgumentType.greedyString())
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String targetName = StringArgumentType.getString(context, "player");
+                                        String charges = StringArgumentType.getString(context, "charges");
+                                        ServerPlayerEntity target = context.getSource().getServer()
+                                                .getPlayerManager().getPlayer(targetName);
+                                        if (target == null) {
+                                            player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                            return 0;
+                                        }
+                                        CourtSystem.fileCase(player, world, target, charges);
+                                        return 1;
+                                    }))));
+
+            // /ss court accept <caseID>
+            court.then(CommandManager.literal("accept")
+                    .then(CommandManager.argument("caseID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String caseID = StringArgumentType.getString(context, "caseID");
+                                CourtSystem.acceptCase(player, world, caseID);
+                                return 1;
+                            })));
+
+            // /ss court evidence <caseID> <evidence>
+            court.then(CommandManager.literal("evidence")
+                    .then(CommandManager.argument("caseID", StringArgumentType.word())
+                            .then(CommandManager.argument("evidence", StringArgumentType.greedyString())
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String caseID = StringArgumentType.getString(context, "caseID");
+                                        String evidence = StringArgumentType.getString(context, "evidence");
+                                        CourtSystem.addEvidence(player, world, caseID, evidence);
+                                        return 1;
+                                    }))));
+
+            // /ss court rule <caseID> guilty fine <amount> <currencyID>
+            // /ss court rule <caseID> guilty jail <days>
+            // /ss court rule <caseID> notguilty
+            court.then(CommandManager.literal("rule")
+                    .then(CommandManager.argument("caseID", StringArgumentType.word())
+                            .then(CommandManager.literal("notguilty")
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String caseID = StringArgumentType.getString(context, "caseID");
+                                        CourtSystem.rule(player, world, caseID, false, "ACQUIT", 0, "", 0);
+                                        return 1;
+                                    }))
+                            .then(CommandManager.literal("guilty")
+                                    .then(CommandManager.literal("fine")
+                                            .then(CommandManager.argument("amount", IntegerArgumentType.integer(1))
+                                                    .then(CommandManager.argument("currencyID", StringArgumentType.word())
+                                                            .executes(context -> {
+                                                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                                                if (player == null) return 0;
+                                                                ServerWorld world = context.getSource().getWorld();
+                                                                String caseID = StringArgumentType.getString(context, "caseID");
+                                                                int amount = IntegerArgumentType.getInteger(context, "amount");
+                                                                String currencyID = StringArgumentType.getString(context, "currencyID");
+                                                                CourtSystem.rule(player, world, caseID, true, "FINE", amount, currencyID, 0);
+                                                                return 1;
+                                                            }))))
+                                    .then(CommandManager.literal("jail")
+                                            .then(CommandManager.argument("days", IntegerArgumentType.integer(1))
+                                                    .executes(context -> {
+                                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                                        if (player == null) return 0;
+                                                        ServerWorld world = context.getSource().getWorld();
+                                                        String caseID = StringArgumentType.getString(context, "caseID");
+                                                        int days = IntegerArgumentType.getInteger(context, "days");
+                                                        CourtSystem.rule(player, world, caseID, true, "JAIL", 0, "", days);
+                                                        return 1;
+                                                    }))))));
+
+            // /ss court warrant <player> <reason>
+            court.then(CommandManager.literal("warrant")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .then(CommandManager.argument("reason", StringArgumentType.greedyString())
+                                    .executes(context -> {
+                                        ServerPlayerEntity player = context.getSource().getPlayer();
+                                        if (player == null) return 0;
+                                        ServerWorld world = context.getSource().getWorld();
+                                        String targetName = StringArgumentType.getString(context, "player");
+                                        String reason = StringArgumentType.getString(context, "reason");
+                                        ServerPlayerEntity target = context.getSource().getServer()
+                                                .getPlayerManager().getPlayer(targetName);
+                                        if (target == null) {
+                                            player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                            return 0;
+                                        }
+                                        CourtSystem.issueWarrant(player, world, target, reason);
+                                        return 1;
+                                    }))));
+
+            // /ss court clearwarrant <player>
+            court.then(CommandManager.literal("clearwarrant")
+                    .then(CommandManager.argument("player", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String targetName = StringArgumentType.getString(context, "player");
+                                ServerPlayerEntity target = context.getSource().getServer()
+                                        .getPlayerManager().getPlayer(targetName);
+                                if (target == null) {
+                                    player.sendMessage(Text.literal("§cPlayer not found: " + targetName));
+                                    return 0;
+                                }
+                                CourtSystem.clearWarrant(player, world, target);
+                                return 1;
+                            })));
+
+            // /ss court list
+            court.then(CommandManager.literal("list")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        CourtSystem.listCases(player, world);
+                        return 1;
+                    }));
+
+            // /ss court info <caseID>
+            court.then(CommandManager.literal("info")
+                    .then(CommandManager.argument("caseID", StringArgumentType.word())
+                            .executes(context -> {
+                                ServerPlayerEntity player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                ServerWorld world = context.getSource().getWorld();
+                                String caseID = StringArgumentType.getString(context, "caseID");
+                                CourtSystem.showCaseInfo(player, world, caseID);
+                                return 1;
+                            })));
+
+            ss.then(court);
             dispatcher.register(ss);
         });
     }
