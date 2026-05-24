@@ -1,11 +1,17 @@
 package com.sovereignstate.registry;
 
+import com.sovereignstate.item.CourtWarrantItem;
+import com.sovereignstate.item.DivisionScrollItem;
+import com.sovereignstate.item.MilitaryBadgeItem;
 import net.fabricmc.fabric.api.item.v1.FabricItemSettings;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
 import com.sovereignstate.item.SurveyorMapItem;
+import com.sovereignstate.item.DivisionScrollItem;
+import com.sovereignstate.item.MilitaryBadgeItem;
+import com.sovereignstate.item.CourtWarrantItem;
 
 public class ModItems {
 
@@ -18,11 +24,11 @@ public class ModItems {
     public static final Item CONSTITUTION_PARCHMENT = new Item(new FabricItemSettings().maxCount(1));
     public static final Item TRADE_CONTRACT = new Item(new FabricItemSettings().maxCount(1));
     public static final Item MARRIAGE_CONTRACT = new Item(new FabricItemSettings().maxCount(1));
-    public static final Item WARRANT_PARCHMENT = new Item(new FabricItemSettings().maxCount(1));
+    public static final Item WARRANT_PARCHMENT = new CourtWarrantItem(new FabricItemSettings().maxCount(1));
     public static final Item PARDON_PARCHMENT = new Item(new FabricItemSettings().maxCount(1));
     public static final Item APPEAL_PARCHMENT = new Item(new FabricItemSettings().maxCount(1));
-    public static final Item ROYAL_DECREE_SCROLL = new Item(new FabricItemSettings().maxCount(1));
     public static final Item HANDCUFF = new Item(new FabricItemSettings().maxCount(1));
+    public static final Item ROYAL_DECREE_SCROLL = new DivisionScrollItem(new FabricItemSettings().maxCount(1));
     public static final Item UNIFORM_DYE_KIT = new Item(new FabricItemSettings().maxCount(16));
     public static final Item COIN_ENGRAVER = new Item(new FabricItemSettings().maxCount(1));
     public static final Item GENDER_CHANGE_PETITION = new Item(new FabricItemSettings().maxCount(1));
@@ -33,7 +39,7 @@ public class ModItems {
     public static final Item ASSIMILATION_DECREE = new Item(new FabricItemSettings().maxCount(1));
     public static final Item SLAVE_REGISTRY_PAPER = new Item(new FabricItemSettings().maxCount(1));
     public static final Item DISCRIMINATION_COMPLAINT = new Item(new FabricItemSettings().maxCount(1));
-    public static final Item MILITARY_RANK_BADGE = new Item(new FabricItemSettings().maxCount(1));
+    public static final Item MILITARY_RANK_BADGE = new MilitaryBadgeItem(new FabricItemSettings().maxCount(1));
     public static final Item RELIGIOUS_RELIC = new Item(new FabricItemSettings().maxCount(1));
     public static final Item PARTY_MEMBERSHIP_CARD = new Item(new FabricItemSettings().maxCount(1));
     public static final Item COPPER_COIN = new Item(new FabricItemSettings().maxCount(64));
