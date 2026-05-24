@@ -9,6 +9,7 @@ import com.sovereignstate.systems.PropertySystem;
 import com.sovereignstate.systems.TradeSystem;
 import com.sovereignstate.data.ArmyData;
 import com.sovereignstate.systems.CourtSystem;
+import com.sovereignstate.network.ServerPacketSender;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.command.CommandManager;
@@ -1379,7 +1380,50 @@ public class CommandSystem {
                                 return 1;
                             })));
 
-            ss.then(court);
+            ss.then(court);// --- GUI ---
+            var gui = CommandManager.literal("gui");
+
+            // /ss gui division
+            gui.then(CommandManager.literal("division")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        ServerPacketSender.sendOpenDivisionScreen(player, world);
+                        return 1;
+                    }));
+
+            // /ss gui diplomacy
+            gui.then(CommandManager.literal("diplomacy")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        ServerPacketSender.sendOpenDiplomacyScreen(player, world);
+                        return 1;
+                    }));
+
+            // /ss gui military
+            gui.then(CommandManager.literal("military")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        ServerPacketSender.sendOpenMilitaryScreen(player, world);
+                        return 1;
+                    }));
+
+            // /ss gui court
+            gui.then(CommandManager.literal("court")
+                    .executes(context -> {
+                        ServerPlayerEntity player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        ServerWorld world = context.getSource().getWorld();
+                        ServerPacketSender.sendOpenCourtScreen(player, world);
+                        return 1;
+                    }));
+
+            ss.then(gui);
             dispatcher.register(ss);
         });
     }
