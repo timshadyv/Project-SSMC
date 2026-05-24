@@ -1,6 +1,7 @@
 package com.sovereignstate;
 
 import com.sovereignstate.registry.ModBlocks;
+import com.sovereignstate.registry.ModEntities;
 import com.sovereignstate.registry.ModItems;
 import com.sovereignstate.registry.ModSounds;
 import com.sovereignstate.data.WorldStateData;
@@ -33,6 +34,7 @@ public class SovereignState implements ModInitializer {
 		ModItems.register();
 		ModBlocks.register();
 		ModSounds.register();
+		ModEntities.register();
 		CommandSystem.register();
 
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
@@ -54,6 +56,8 @@ public class SovereignState implements ModInitializer {
 				}
 
 				cultureData.loadPresetsIfNeeded();
+				net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry.register(
+						ModEntities.GUARD, com.sovereignstate.entity.GuardEntity.createGuardAttributes());
 
 				LOGGER.info("Sovereign State world state initialized.");
 			});

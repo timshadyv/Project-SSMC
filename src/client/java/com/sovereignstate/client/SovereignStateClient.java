@@ -1,6 +1,9 @@
 package com.sovereignstate.client;
 
 import com.sovereignstate.client.screen.DivisionScreen;
+import com.sovereignstate.client.renderer.GuardEntityRenderer;
+import com.sovereignstate.registry.ModEntities;
+import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import com.sovereignstate.network.ModPackets;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -15,7 +18,7 @@ public class SovereignStateClient implements ClientModInitializer {
 	public void onInitializeClient() {
 
 		// ─── Division Info Screen ─────────────────────────────────────────────
-
+		EntityRendererRegistry.register(ModEntities.GUARD, GuardEntityRenderer::new);
 		ClientPlayNetworking.registerGlobalReceiver(ModPackets.OPEN_DIVISION_SCREEN, (client, handler, buf, responseSender) -> {
 
 			boolean hasDivision = buf.readBoolean();
