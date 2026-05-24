@@ -97,37 +97,65 @@ public class SovereignStateClient implements ClientModInitializer {
 			});
 		});
 
-		// ─── Military Screen (placeholder) ───────────────────────────────────
+		// ─── Military Screen ──────────────────────────────────────────────────
 
 		ClientPlayNetworking.registerGlobalReceiver(ModPackets.OPEN_MILITARY_SCREEN, (client, handler, buf, responseSender) -> {
 			boolean has = buf.readBoolean();
-			if (!has) return;
-			// Read and discard — dedicated screen coming in next session
-			String divID = buf.readString();
-			int count = buf.readInt();
-			for (int i = 0; i < count; i++) {
-				buf.readString(); buf.readString(); buf.readString();
-				buf.readInt(); buf.readBoolean(); buf.readInt(); buf.readInt();
+			if (!has) {
+				client.execute(() -> MinecraftClient.getInstance().player
+						.sendMessage(net.minecraft.text.Text.literal("§cYou are not in a division.")));
+				return;
 			}
-			buf.readString();
-			client.execute(() -> MinecraftClient.getInstance().player
-					.sendMessage(net.minecraft.text.Text.literal("§eMilitary screen coming soon! Use §f/ss military list")));
+
+			String divID = buf.readString();
+
+			int count = buf.readInt();
+			java.util.List<com.sovereignstate.client.screen.MilitaryScreen.ArmyEntry> armies = new java.util.ArrayList<>();
+			for (int i = 0; i < count; i++) {
+				String id        = buf.readString();
+				String name      = buf.readString();
+				String unitType  = buf.readString();
+				int unitCount    = buf.readInt();
+				boolean deployed = buf.readBoolean();
+				int chunkX       = buf.readInt();
+				int chunkZ       = buf.readInt();
+				armies.add(new com.sovereignstate.client.screen.MilitaryScreen.ArmyEntry(
+						id, name, unitType, unitCount, deployed, chunkX, chunkZ));
+			}
+
+			String rank = buf.readString();
+
+			client.execute(() -> MinecraftClient.getInstance().setScreen(
+					new com.sovereignstate.client.screen.MilitaryScreen(divID, armies, rank)));
 		});
 
-		// ─── Court Screen (placeholder) ───────────────────────────────────────
+		// ─── Court Screen ─────────────────────────────────────────────────────
 
 		ClientPlayNetworking.registerGlobalReceiver(ModPackets.OPEN_COURT_SCREEN, (client, handler, buf, responseSender) -> {
 			boolean has = buf.readBoolean();
-			if (!has) return;
-			// Read and discard — dedicated screen coming in next session
-			String divID = buf.readString();
-			int count = buf.readInt();
-			for (int i = 0; i < count; i++) {
-				buf.readString(); buf.readString(); buf.readString();
-				buf.readString(); buf.readString(); buf.readString();
+			if (!has) {
+				client.execute(() -> MinecraftClient.getInstance().player
+						.sendMessage(net.minecraft.text.Text.literal("§cYou are not in a division.")));
+				return;
 			}
-			client.execute(() -> MinecraftClient.getInstance().player
-					.sendMessage(net.minecraft.text.Text.literal("§eCourt screen coming soon! Use §f/ss court list")));
+
+			String divID = buf.readString();
+
+			int count = buf.readInt();
+			java.util.List<com.sovereignstate.client.screen.CourtScreen.CaseEntry> cases = new java.util.ArrayList<>();
+			for (int i = 0; i < count; i++) {
+				String id             = buf.readString();
+				String status         = buf.readString();
+				String chargesSummary = buf.readString();
+				String defendantUUID  = buf.readString();
+				String plaintiffUUID  = buf.readString();
+				String verdict        = buf.readString();
+				cases.add(new com.sovereignstate.client.screen.CourtScreen.CaseEntry(
+						id, status, chargesSummary, defendantUUID, plaintiffUUID, verdict));
+			}
+
+			client.execute(() -> MinecraftClient.getInstance().setScreen(
+					new com.sovereignstate.client.screen.CourtScreen(divID, cases)));
 		});
 	}
 }
