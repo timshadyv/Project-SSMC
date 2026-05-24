@@ -61,11 +61,15 @@ public class SovereignStateClient implements ClientModInitializer {
 			));
 		});
 
-		// ─── Diplomacy Screen (placeholder — uses DivisionScreen diplomacy tab) ──
+		// ─── Diplomacy Screen ─────────────────────────────────────────────────
 
 		ClientPlayNetworking.registerGlobalReceiver(ModPackets.OPEN_DIPLOMACY_SCREEN, (client, handler, buf, responseSender) -> {
 			boolean has = buf.readBoolean();
-			if (!has) return;
+			if (!has) {
+				client.execute(() -> MinecraftClient.getInstance().player
+						.sendMessage(net.minecraft.text.Text.literal("§cYou are not in a division.")));
+				return;
+			}
 
 			String divID = buf.readString();
 
@@ -77,10 +81,17 @@ public class SovereignStateClient implements ClientModInitializer {
 			List<String> enemies = new ArrayList<>();
 			for (int i = 0; i < enemyCount; i++) enemies.add(buf.readString());
 
-			// Incoming proposals — read and discard for now (full screen coming later)
-			int ap = buf.readInt(); for (int i = 0; i < ap; i++) buf.readString();
-			int pp = buf.readInt(); for (int i = 0; i < pp; i++) buf.readString();
-			int vp = buf.readInt(); for (int i = 0; i < vp; i++) buf.readString();
+			int ap = buf.readInt();
+			List<String> incomingAlliances = new ArrayList<>();
+			for (int i = 0; i < ap; i++) incomingAlliances.add(buf.readString());
+
+			int pp = buf.readInt();
+			List<String> incomingPeace = new ArrayList<>();
+			for (int i = 0; i < pp; i++) incomingPeace.add(buf.readString());
+
+			int vp = buf.readInt();
+			List<String> incomingVassal = new ArrayList<>();
+			for (int i = 0; i < vp; i++) incomingVassal.add(buf.readString());
 
 			String overlord = buf.readString();
 
@@ -88,13 +99,10 @@ public class SovereignStateClient implements ClientModInitializer {
 			List<String> vassals = new ArrayList<>();
 			for (int i = 0; i < vassalCount; i++) vassals.add(buf.readString());
 
-			// Open division screen on diplomacy tab
-			client.execute(() -> {
-				DivisionScreen screen = new DivisionScreen(
-						divID, divID, "", "", 0, 0, "",
-						new ArrayList<>(), allies, enemies, overlord, vassals, "");
-				MinecraftClient.getInstance().setScreen(screen);
-			});
+			client.execute(() -> MinecraftClient.getInstance().setScreen(
+					new com.sovereignstate.client.screen.DiplomacyScreen(
+							divID, allies, enemies, incomingAlliances,
+							incomingPeace, incomingVassal, overlord, vassals)));
 		});
 
 		// ─── Military Screen ──────────────────────────────────────────────────

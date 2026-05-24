@@ -1,17 +1,12 @@
 package com.sovereignstate.registry;
 
-import com.sovereignstate.item.CourtWarrantItem;
-import com.sovereignstate.item.DivisionScrollItem;
-import com.sovereignstate.item.MilitaryBadgeItem;
+import com.sovereignstate.item.*;
 import net.fabricmc.fabric.api.item.v1.FabricItemSettings;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
-import com.sovereignstate.item.SurveyorMapItem;
-import com.sovereignstate.item.DivisionScrollItem;
-import com.sovereignstate.item.MilitaryBadgeItem;
-import com.sovereignstate.item.CourtWarrantItem;
+import com.sovereignstate.item.DiplomacyScrollItem;
 
 public class ModItems {
 
@@ -22,7 +17,7 @@ public class ModItems {
     public static final Item SPY_KIT = new Item(new FabricItemSettings().maxCount(1));
     public static final Item LAW_PARCHMENT = new Item(new FabricItemSettings().maxCount(64));
     public static final Item CONSTITUTION_PARCHMENT = new Item(new FabricItemSettings().maxCount(1));
-    public static final Item TRADE_CONTRACT = new Item(new FabricItemSettings().maxCount(1));
+    public static final Item TRADE_CONTRACT = new DiplomacyScrollItem(new FabricItemSettings().maxCount(1));
     public static final Item MARRIAGE_CONTRACT = new Item(new FabricItemSettings().maxCount(1));
     public static final Item WARRANT_PARCHMENT = new CourtWarrantItem(new FabricItemSettings().maxCount(1));
     public static final Item PARDON_PARCHMENT = new Item(new FabricItemSettings().maxCount(1));
